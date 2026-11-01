@@ -7,6 +7,29 @@ import qrcodeTerminal from 'qrcode-terminal';
 import { generateX25519KeyPair, deriveSessionKey, encryptPayload } from './cryptoHelper.js';
 import { createTemporaryUser } from './scriptRunner.js';
 
+function getLanIp() {
+  const nets = os.networkInterfaces();
+  for (const name of Object.keys(nets)) {
+    if (/wi-fi|ethernet|wlan/i.test(name)) {
+      for (const net of nets[name]) {
+        if (net.family === 'IPv4' && !net.internal) {
+          return net.address;
+        }
+      }
+    }
+  }
+  for (const name of Object.keys(nets)) {
+    for (const net of nets[name]) {
+      if (net.family === 'IPv4' && !net.internal && !name.toLowerCase().includes('vmware')) {
+        return net.address;
+      }
+    }
+  }
+  return 'localhost';
+}
+
+const LAN_IP = getLanIp();
+const RELAY_HTTP_URL = process.env.RELAY_HTTP_URL || `http://${LAN_IP}:8080`;
 const RELAY_WS_URL = process.env.RELAY_WS_URL || 'ws://localhost:8080/ws/agent';
 const CONFIG_FILE = path.join(process.cwd(), 'agent-config.json');
 
@@ -79,7 +102,7 @@ function connect() {
 
       const pairingPayload = JSON.stringify({
         deviceId: identity.deviceId,
-        relayUrl: RELAY_WS_URL.replace('/ws/agent', ''),
+        relayUrl: RELAY_HTTP_URL,
         pairingSecret: identity.pairingSecret,
         devicePublicKey: identity.publicKeyBase64
       });
@@ -110,7 +133,7 @@ function connect() {
     <h1>VanishKey Pairing QR</h1>
     <p>Scan this QR code with the VanishKey mobile app to pair your phone with this laptop.</p>
     <div id="qrcode"></div>
-    <div class="code">Device ID: ${identity.deviceId}<br>Pairing Secret: ${identity.pairingSecret}</div>
+    <div class="code">Relay Server: ${RELAY_HTTP_URL}<br>Device ID: ${identity.deviceId}<br>Pairing Secret: ${identity.pairingSecret}</div>
   </div>
   <script>
     new QRCode(document.getElementById("qrcode"), {

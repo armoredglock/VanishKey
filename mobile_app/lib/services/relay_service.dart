@@ -22,8 +22,31 @@ class RelayService extends ChangeNotifier {
   dynamic _currentEphemeralKeyPair;
 
   void updateRelayUrl(String url) {
-    relayBaseUrl = url.replaceAll(RegExp(r'/+$'), '');
+    String cleaned = url.trim().replaceAll(RegExp(r'/+$'), '');
+    if (cleaned.startsWith('ws://')) {
+      cleaned = cleaned.replaceFirst('ws://', 'http://');
+    } else if (cleaned.startsWith('wss://')) {
+      cleaned = cleaned.replaceFirst('wss://', 'https://');
+    } else if (!cleaned.startsWith('http://') && !cleaned.startsWith('https://')) {
+      cleaned = 'http://$cleaned';
+    }
+    relayBaseUrl = cleaned;
     notifyListeners();
+    if (ownerId != null) {
+      connectWebSocket();
+    }
+  }
+
+  String get _httpBaseUrl {
+    String base = relayBaseUrl.trim();
+    if (base.startsWith('ws://')) {
+      base = base.replaceFirst('ws://', 'http://');
+    } else if (base.startsWith('wss://')) {
+      base = base.replaceFirst('wss://', 'https://');
+    } else if (!base.startsWith('http://') && !base.startsWith('https://')) {
+      base = 'http://$base';
+    }
+    return base.replaceAll(RegExp(r'/+$'), '');
   }
 
   void initialize(String owner) {
@@ -33,9 +56,10 @@ class RelayService extends ChangeNotifier {
   }
 
   String get _wsUrl {
-    final uri = Uri.parse(relayBaseUrl);
+    final uri = Uri.parse(_httpBaseUrl);
     final wsScheme = uri.scheme == 'https' ? 'wss' : 'ws';
-    return '$wsScheme://${uri.host}:${uri.port}/ws/mobile?ownerId=$ownerId';
+    final portPart = uri.hasPort ? ':${uri.port}' : '';
+    return '$wsScheme://${uri.host}$portPart/ws/mobile?ownerId=$ownerId';
   }
 
   void connectWebSocket() {
@@ -156,7 +180,7 @@ class RelayService extends ChangeNotifier {
     String? customName,
   }) async {
     final res = await http.post(
-      Uri.parse('$relayBaseUrl/api/v1/devices/pair'),
+      Uri.parse('$_httpBaseUrl/api/v1/devices/pair'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'ownerId': ownerId,
@@ -178,7 +202,7 @@ class RelayService extends ChangeNotifier {
   /// Revoke paired device
   Future<bool> revokeDevice(String deviceId) async {
     final res = await http.post(
-      Uri.parse('$relayBaseUrl/api/v1/devices/revoke'),
+      Uri.parse('$_httpBaseUrl/api/v1/devices/revoke'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'ownerId': ownerId,
@@ -197,7 +221,7 @@ class RelayService extends ChangeNotifier {
   Future<void> refreshDevices() async {
     if (ownerId == null) return;
     try {
-      final res = await http.get(Uri.parse('$relayBaseUrl/api/v1/devices/list?ownerId=$ownerId'));
+      final res = await http.get(Uri.parse('$_httpBaseUrl/api/v1/devices/list?ownerId=$ownerId'));
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
         final list = (data['devices'] as List).map((d) => PairedDevice.fromJson(d)).toList();
@@ -213,7 +237,7 @@ class RelayService extends ChangeNotifier {
   Future<void> refreshAuditLogs() async {
     if (ownerId == null) return;
     try {
-      final res = await http.get(Uri.parse('$relayBaseUrl/api/v1/audit/logs?ownerId=$ownerId'));
+      final res = await http.get(Uri.parse('$_httpBaseUrl/api/v1/audit/logs?ownerId=$ownerId'));
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
         auditHistory = List<Map<String, dynamic>>.from(data['logs'] ?? []).reversed.toList();

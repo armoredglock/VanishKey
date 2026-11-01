@@ -7,7 +7,29 @@ import { generateX25519KeyPair } from './cryptoHelper.js';
 
 const CONFIG_FILE = path.join(process.cwd(), 'agent-config.json');
 const HTML_FILE = path.join(process.cwd(), 'pairing-qr.html');
-const RELAY_BASE_URL = process.env.RELAY_URL || 'http://localhost:8080';
+function getLanIp() {
+  const nets = os.networkInterfaces();
+  for (const name of Object.keys(nets)) {
+    if (/wi-fi|ethernet|wlan/i.test(name)) {
+      for (const net of nets[name]) {
+        if (net.family === 'IPv4' && !net.internal) {
+          return net.address;
+        }
+      }
+    }
+  }
+  for (const name of Object.keys(nets)) {
+    for (const net of nets[name]) {
+      if (net.family === 'IPv4' && !net.internal && !name.toLowerCase().includes('vmware')) {
+        return net.address;
+      }
+    }
+  }
+  return 'localhost';
+}
+
+const lanIp = getLanIp();
+const RELAY_BASE_URL = process.env.RELAY_URL || `http://${lanIp}:8080`;
 
 let identity;
 if (fs.existsSync(CONFIG_FILE)) {
@@ -141,6 +163,7 @@ const html = `<!DOCTYPE html>
       <div id="qrcode"></div>
     </div>
     <div class="meta-box">
+      <div><b>Relay Server:</b> ${RELAY_BASE_URL}</div>
       <div><b>Device:</b> ${identity.deviceName}</div>
       <div><b>Device ID:</b> ${identity.deviceId}</div>
       <div><b>Pairing Secret:</b> ${identity.pairingSecret}</div>
