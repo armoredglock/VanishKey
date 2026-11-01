@@ -75,8 +75,8 @@ try {
 
     $newUser = New-LocalUser -Name $Username `
         -Password $secPassword `
-        -FullName "VanishKey Temporary User ($Username)" `
-        -Description "Auto-generated ephemeral user by VanishKey. Scheduled for deletion." `
+        -FullName "VanishKey User ($Username)" `
+        -Description "VanishKey Ephemeral Temporary Account" `
         -PasswordNeverExpires:$false `
         -UserMayNotChangePassword:$true `
         -AccountNeverExpires:$false `
