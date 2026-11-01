@@ -29,8 +29,6 @@ function getLanIp() {
 }
 
 const LAN_IP = getLanIp();
-const RELAY_HTTP_URL = process.env.RELAY_HTTP_URL || `http://${LAN_IP}:8080`;
-const RELAY_WS_URL = process.env.RELAY_WS_URL || 'ws://localhost:8080/ws/agent';
 const CONFIG_FILE = path.join(process.cwd(), 'agent-config.json');
 
 // Load or generate persistent identity
@@ -40,6 +38,24 @@ if (fs.existsSync(CONFIG_FILE)) {
     identity = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
   } catch (e) {
     identity = null;
+  }
+}
+
+const customRelay = process.env.RELAY_URL || process.env.RELAY_HTTP_URL || identity?.relayUrl;
+let RELAY_HTTP_URL = `http://${LAN_IP}:8080`;
+let RELAY_WS_URL = 'ws://localhost:8080/ws/agent';
+
+if (customRelay) {
+  const cleaned = customRelay.trim().replace(/\/+$/, '');
+  if (cleaned.startsWith('https://')) {
+    RELAY_HTTP_URL = cleaned;
+    RELAY_WS_URL = cleaned.replace('https://', 'wss://') + '/ws/agent';
+  } else if (cleaned.startsWith('http://')) {
+    RELAY_HTTP_URL = cleaned;
+    RELAY_WS_URL = cleaned.replace('http://', 'ws://') + '/ws/agent';
+  } else {
+    RELAY_HTTP_URL = `https://${cleaned}`;
+    RELAY_WS_URL = `wss://${cleaned}/ws/agent`;
   }
 }
 

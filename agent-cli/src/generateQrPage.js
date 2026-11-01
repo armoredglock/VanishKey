@@ -28,8 +28,9 @@ function getLanIp() {
   return 'localhost';
 }
 
-const lanIp = getLanIp();
-const RELAY_BASE_URL = process.env.RELAY_URL || `http://${lanIp}:8080`;
+const LAN_IP = getLanIp();
+const customRelay = process.env.RELAY_URL || process.env.RELAY_HTTP_URL || identity?.relayUrl;
+const RELAY_BASE_URL = customRelay ? (customRelay.startsWith('http') ? customRelay : `https://${customRelay}`) : `http://${LAN_IP}:8080`;
 
 let identity;
 if (fs.existsSync(CONFIG_FILE)) {
