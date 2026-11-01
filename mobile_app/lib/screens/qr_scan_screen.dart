@@ -15,6 +15,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
   final MobileScannerController _scannerController = MobileScannerController(
     detectionSpeed: DetectionSpeed.normal,
     facing: CameraFacing.back,
+    torchEnabled: false,
   );
   bool _isProcessing = false;
 
@@ -31,22 +32,26 @@ class _QrScanScreenState extends State<QrScanScreen> {
               data.containsKey('pairingSecret')) {
             setState(() { _isProcessing = true; });
             _scannerController.stop();
-            await _handlePairing(data);
+            await _handlePairing(
+              deviceId: data['deviceId'] as String,
+              pairingSecret: data['pairingSecret'] as String,
+              relayUrl: data['relayUrl'] as String?,
+              devicePublicKey: data['devicePublicKey'] as String? ?? '',
+            );
             return;
           }
-        } catch (_) {
-          // Non-JSON barcode scanned, ignore
-        }
+        } catch (_) {}
       }
     }
   }
 
-  Future<void> _handlePairing(Map<String, dynamic> data) async {
+  Future<void> _handlePairing({
+    required String deviceId,
+    required String pairingSecret,
+    String? relayUrl,
+    String devicePublicKey = '',
+  }) async {
     final relay = context.read<RelayService>();
-    final deviceId = data['deviceId'] as String;
-    final pairingSecret = data['pairingSecret'] as String;
-    final devicePublicKey = data['devicePublicKey'] as String? ?? '';
-    final relayUrl = data['relayUrl'] as String?;
 
     if (relayUrl != null && relayUrl.isNotEmpty) {
       relay.updateRelayUrl(relayUrl);
@@ -120,6 +125,108 @@ class _QrScanScreenState extends State<QrScanScreen> {
     }
   }
 
+  void _showManualPairDialog() {
+    final relay = context.read<RelayService>();
+    final urlController = TextEditingController(text: relay.relayBaseUrl);
+    final idController = TextEditingController();
+    final pinController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        title: const Row(
+          children: [
+            Icon(Icons.keyboard_alt_outlined, color: Color(0xFF38BDF8)),
+            SizedBox(width: 8),
+            Text('Manual Pairing', style: TextStyle(color: Colors.white, fontSize: 18)),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Enter the pairing info shown on your laptop screen:', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
+              const SizedBox(height: 16),
+              const Text('Relay Server Address / IP:', style: TextStyle(color: Colors.white70, fontSize: 12)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: urlController,
+                style: const TextStyle(color: Colors.white, fontFamily: 'monospace'),
+                decoration: InputDecoration(
+                  hintText: 'http://192.168.1.X:8080',
+                  hintStyle: const TextStyle(color: Colors.white30),
+                  filled: true,
+                  fillColor: const Color(0xFF0F172A),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text('Device ID (e.g. dev_win32_1677AA):', style: TextStyle(color: Colors.white70, fontSize: 12)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: idController,
+                style: const TextStyle(color: Colors.white, fontFamily: 'monospace'),
+                decoration: InputDecoration(
+                  hintText: 'dev_win32_XXXXXX',
+                  hintStyle: const TextStyle(color: Colors.white30),
+                  filled: true,
+                  fillColor: const Color(0xFF0F172A),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text('6-Digit Pairing Secret / PIN:', style: TextStyle(color: Colors.white70, fontSize: 12)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: pinController,
+                keyboardType: TextInputType.number,
+                style: const TextStyle(color: Colors.white, fontFamily: 'monospace', letterSpacing: 2),
+                decoration: InputDecoration(
+                  hintText: '123456',
+                  hintStyle: const TextStyle(color: Colors.white30),
+                  filled: true,
+                  fillColor: const Color(0xFF0F172A),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white60)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0284C7)),
+            onPressed: () {
+              final devId = idController.text.trim();
+              final pin = pinController.text.trim();
+              final url = urlController.text.trim();
+
+              if (devId.isEmpty || pin.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please fill in both Device ID and PIN.')),
+                );
+                return;
+              }
+
+              Navigator.pop(ctx);
+              _handlePairing(
+                deviceId: devId,
+                pairingSecret: pin,
+                relayUrl: url.isNotEmpty ? url : null,
+              );
+            },
+            child: const Text('Pair Device', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _scannerController.dispose();
@@ -133,12 +240,56 @@ class _QrScanScreenState extends State<QrScanScreen> {
       appBar: AppBar(
         title: const Text('Scan Desktop QR Code'),
         backgroundColor: const Color(0xFF1E293B),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.flash_on, color: Colors.white70),
+            tooltip: 'Toggle Flash',
+            onPressed: () => _scannerController.toggleTorch(),
+          ),
+          IconButton(
+            icon: const Icon(Icons.flip_camera_ios, color: Colors.white70),
+            tooltip: 'Flip Camera',
+            onPressed: () => _scannerController.switchCamera(),
+          ),
+        ],
       ),
       body: Stack(
         children: [
           MobileScanner(
             controller: _scannerController,
             onDetect: _onDetect,
+            errorBuilder: (context, error, child) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.camera_alt_outlined, size: 64, color: Colors.orangeAccent),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Camera unavailable or permission needed',
+                        style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '${error.errorCode.name}: ${error.errorDetails?.message ?? "Could not start camera."}',
+                        style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 24),
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0284C7)),
+                        icon: const Icon(Icons.keyboard, color: Colors.white),
+                        label: const Text('Enter Code Manually Instead', style: TextStyle(color: Colors.white)),
+                        onPressed: _showManualPairDialog,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
           ),
           Center(
             child: Container(
@@ -151,20 +302,39 @@ class _QrScanScreenState extends State<QrScanScreen> {
             ),
           ),
           Positioned(
-            bottom: 40,
+            bottom: 30,
             left: 20,
             right: 20,
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1E293B).withOpacity(0.9),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Text(
-                'Point camera at the QR code displayed on your laptop screen',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white, fontSize: 13),
-              ),
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1E293B).withOpacity(0.9),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Text(
+                    'Point camera at the QR code displayed on your laptop screen',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white, fontSize: 13),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1E293B),
+                    side: const BorderSide(color: Color(0xFF38BDF8)),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  icon: const Icon(Icons.keyboard_alt_outlined, color: Color(0xFF38BDF8)),
+                  label: const Text(
+                    "Can't scan? Enter PIN manually",
+                    style: TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold),
+                  ),
+                  onPressed: _showManualPairDialog,
+                ),
+              ],
             ),
           ),
         ],

@@ -171,6 +171,127 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  void _showManualPair(BuildContext context) {
+    final relay = context.read<RelayService>();
+    final urlController = TextEditingController(text: relay.relayBaseUrl);
+    final idController = TextEditingController();
+    final pinController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        title: const Row(
+          children: [
+            Icon(Icons.keyboard_alt_outlined, color: Color(0xFF38BDF8)),
+            SizedBox(width: 8),
+            Text('Manual Pairing', style: TextStyle(color: Colors.white, fontSize: 18)),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Enter the pairing info shown on your laptop screen:', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
+              const SizedBox(height: 16),
+              const Text('Relay Server Address / IP:', style: TextStyle(color: Colors.white70, fontSize: 12)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: urlController,
+                style: const TextStyle(color: Colors.white, fontFamily: 'monospace'),
+                decoration: InputDecoration(
+                  hintText: 'http://192.168.1.X:8080',
+                  hintStyle: const TextStyle(color: Colors.white30),
+                  filled: true,
+                  fillColor: const Color(0xFF0F172A),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text('Device ID (e.g. dev_win32_1677AA):', style: TextStyle(color: Colors.white70, fontSize: 12)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: idController,
+                style: const TextStyle(color: Colors.white, fontFamily: 'monospace'),
+                decoration: InputDecoration(
+                  hintText: 'dev_win32_XXXXXX',
+                  hintStyle: const TextStyle(color: Colors.white30),
+                  filled: true,
+                  fillColor: const Color(0xFF0F172A),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text('6-Digit Pairing PIN:', style: TextStyle(color: Colors.white70, fontSize: 12)),
+              const SizedBox(height: 6),
+              TextField(
+                controller: pinController,
+                keyboardType: TextInputType.number,
+                style: const TextStyle(color: Colors.white, fontFamily: 'monospace', letterSpacing: 2),
+                decoration: InputDecoration(
+                  hintText: '123456',
+                  hintStyle: const TextStyle(color: Colors.white30),
+                  filled: true,
+                  fillColor: const Color(0xFF0F172A),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white60)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0284C7)),
+            onPressed: () async {
+              final devId = idController.text.trim();
+              final pin = pinController.text.trim();
+              final url = urlController.text.trim();
+
+              if (devId.isEmpty || pin.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please fill in both Device ID and PIN.')),
+                );
+                return;
+              }
+
+              if (url.isNotEmpty) {
+                relay.updateRelayUrl(url);
+              }
+
+              Navigator.pop(ctx);
+
+              try {
+                await relay.pairDevice(
+                  deviceId: devId,
+                  pairingSecret: pin,
+                  devicePublicKey: '',
+                  customName: 'Laptop ($devId)',
+                );
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Laptop paired successfully!')),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Pairing failed: $e')),
+                  );
+                }
+              }
+            },
+            child: const Text('Pair Device', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final relay = context.watch<RelayService>();
@@ -253,6 +374,12 @@ class HomeScreen extends StatelessWidget {
                     icon: const Icon(Icons.qr_code_scanner, color: Colors.white),
                     label: const Text('Scan Desktop QR Code', style: TextStyle(fontSize: 16, color: Colors.white)),
                     onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const QrScanScreen())),
+                  ),
+                  const SizedBox(height: 12),
+                  TextButton.icon(
+                    icon: const Icon(Icons.keyboard_alt_outlined, color: Color(0xFF38BDF8)),
+                    label: const Text('Or Enter Pairing PIN Manually', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 14)),
+                    onPressed: () => _showManualPair(context),
                   ),
                 ],
               ),

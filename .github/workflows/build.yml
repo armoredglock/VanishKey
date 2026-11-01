@@ -57,6 +57,8 @@ jobs:
           # Ensure minSdk is 23 for biometric & security plugins
           sed -i 's/minSdkVersion [0-9]*/minSdkVersion 23/' android/app/build.gradle || true
           sed -i 's/flutter.minSdkVersion/23/' android/app/build.gradle || true
+          # Inject camera and network permissions into AndroidManifest.xml
+          sed -i '/<application/i \    <uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.CAMERA"/>\n    <uses-feature android:name="android.hardware.camera" android:required="false" />\n    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />' android/app/src/main/AndroidManifest.xml || true
           flutter pub get
           flutter build apk --release
 
