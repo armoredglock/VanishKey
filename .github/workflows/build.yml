@@ -1,0 +1,147 @@
+name: VanishKey Multi-Platform CI/CD
+
+on:
+  push:
+    branches: [ main ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  # -------------------------------------------------------------
+  # Job 1: Test Server & Relay Hub
+  # -------------------------------------------------------------
+  test-server:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: |
+            server/package.json
+            agent-cli/package.json
+
+      - name: Test Server & CLI Agent E2E
+        run: |
+          cd server && npm ci
+          cd ../agent-cli && npm ci
+          npm run test-e2e
+
+      - name: Build Docker Container
+        run: |
+          docker build -t vanishkey-relay:latest ./server
+
+  # -------------------------------------------------------------
+  # Job 2: Build Android (APK / AAB)
+  # -------------------------------------------------------------
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Scaffold & Build Android Release APK
+        working-directory: mobile_app
+        run: |
+          flutter create --platforms=android .
+          # Ensure minSdk is 23 for biometric & security plugins
+          sed -i 's/minSdkVersion [0-9]*/minSdkVersion 23/' android/app/build.gradle || true
+          sed -i 's/flutter.minSdkVersion/23/' android/app/build.gradle || true
+          flutter pub get
+          flutter build apk --release
+
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: VanishKey-Android-APK
+          path: mobile_app/build/app/outputs/flutter-apk/app-release.apk
+
+  # -------------------------------------------------------------
+  # Job 3: Build Windows Desktop Host (.exe)
+  # -------------------------------------------------------------
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Enable Windows Desktop Support
+        run: flutter config --enable-windows-desktop
+
+      - name: Scaffold & Build Windows Executable
+        working-directory: desktop_agent
+        run: |
+          flutter create --platforms=windows .
+          flutter pub get
+          flutter build windows --release
+
+      - name: Package Windows Portable Release (Zip)
+        run: |
+          Compress-Archive -Path desktop_agent\build\windows\x64\runner\Release\* -DestinationPath dist\windows\VanishKey-Windows-Portable.zip -Force
+
+      - name: Upload Windows Host Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: VanishKey-Windows-App
+          path: |
+            dist/windows/VanishKey-Windows-Portable.zip
+            desktop_agent/build/windows/x64/runner/Release/vanishkey_desktop_agent.exe
+
+  # -------------------------------------------------------------
+  # Job 4: Create GitHub Release with Direct Download Links
+  # -------------------------------------------------------------
+  create-release:
+    needs: [build-android, build-windows]
+    if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download Android Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: VanishKey-Android-APK
+          path: release-assets/android
+
+      - name: Download Windows Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: VanishKey-Windows-App
+          path: release-assets/windows
+
+      - name: Publish GitHub Release (v1.0.0)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.0
+          name: "VanishKey v1.0.0 - Official Release"
+          body: |
+            ## VanishKey v1.0.0
+            
+            Zero-knowledge, time-limited ephemeral laptop access for shared rooms & dorms.
+            
+            ### Downloads:
+            - 📱 **Android Phone App:** `app-release.apk` (Direct install / sideload)
+            - 💻 **Windows Desktop Host:** `VanishKey-Windows-Portable.zip` (Extract & run `vanishkey_desktop_agent.exe`)
+          files: |
+            release-assets/android/app-release.apk
+            release-assets/windows/VanishKey-Windows-Portable.zip
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

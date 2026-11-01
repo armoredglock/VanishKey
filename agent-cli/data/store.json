@@ -1,0 +1,79 @@
+{
+  "devices": {
+    "dev_win_test_suite": {
+      "deviceId": "dev_win_test_suite",
+      "ownerId": "owner_alice_room302",
+      "deviceName": "Alice Gaming Laptop",
+      "osType": "windows",
+      "publicKey": "MwNimnFBxLX9qdYq1jqmXY6T+iJlx/ZD+uMqbDyqhw4=",
+      "phonePublicKey": "dummy_pub_key",
+      "deviceToken": "vkt_dev_05be0636b2b534c587d57501e64ad8f0700f3f2c9f4786b2",
+      "ownerToken": "vkt_own_ff5e6b284fc8a3f5bce1d2c1a184b29c2f587edda2435466",
+      "pairedAt": "2026-11-01T16:17:07.369Z",
+      "lastSeenAt": "2026-11-01T16:17:07.369Z",
+      "isOnline": false
+    }
+  },
+  "auditLogs": [
+    {
+      "id": "log_5abf20c4d169f750",
+      "timestamp": "2026-10-31T21:50:38.731Z",
+      "ownerId": "owner_alice_room302",
+      "deviceId": "dev_win_test_suite",
+      "action": "DEVICE_PAIRED",
+      "status": "SUCCESS",
+      "durationMinutes": null,
+      "errorDetails": null
+    },
+    {
+      "id": "log_ea60b18c053d4639",
+      "timestamp": "2026-10-31T21:50:38.747Z",
+      "ownerId": "owner_alice_room302",
+      "deviceId": "dev_win_test_suite",
+      "action": "ACCESS_GENERATION",
+      "status": "SUCCESS",
+      "durationMinutes": 3,
+      "errorDetails": null
+    },
+    {
+      "id": "log_5f389f52dd23fef8",
+      "timestamp": "2026-10-31T21:57:40.251Z",
+      "ownerId": "owner_alice_room302",
+      "deviceId": "dev_win_test_suite",
+      "action": "DEVICE_PAIRED",
+      "status": "SUCCESS",
+      "durationMinutes": null,
+      "errorDetails": null
+    },
+    {
+      "id": "log_e8cc8cbdc7cb40b6",
+      "timestamp": "2026-10-31T21:57:40.275Z",
+      "ownerId": "owner_alice_room302",
+      "deviceId": "dev_win_test_suite",
+      "action": "ACCESS_GENERATION",
+      "status": "SUCCESS",
+      "durationMinutes": 3,
+      "errorDetails": null
+    },
+    {
+      "id": "log_10c100a30a9d63ea",
+      "timestamp": "2026-11-01T16:17:07.369Z",
+      "ownerId": "owner_alice_room302",
+      "deviceId": "dev_win_test_suite",
+      "action": "DEVICE_PAIRED",
+      "status": "SUCCESS",
+      "durationMinutes": null,
+      "errorDetails": null
+    },
+    {
+      "id": "log_37ffc764156c97d1",
+      "timestamp": "2026-11-01T16:17:07.391Z",
+      "ownerId": "owner_alice_room302",
+      "deviceId": "dev_win_test_suite",
+      "action": "ACCESS_GENERATION",
+      "status": "SUCCESS",
+      "durationMinutes": 3,
+      "errorDetails": null
+    }
+  ]
+}

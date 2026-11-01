@@ -1,0 +1,29 @@
+name: vanishkey_desktop_agent
+description: "VanishKey Desktop Agent - Ephemeral Access Host Service for Windows and macOS"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+  flutter: ">=3.19.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  tray_manager: ^0.2.3
+  window_manager: ^0.3.9
+  launch_at_startup: ^0.2.2
+  qr_flutter: ^4.1.0
+  cryptography: ^2.7.2
+  web_socket_channel: ^3.0.1
+  shared_preferences: ^2.3.2
+  intl: ^0.19.0
+  package_info_plus: ^8.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true

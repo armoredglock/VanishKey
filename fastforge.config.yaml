@@ -1,0 +1,59 @@
+# Fastforge Multi-Platform Build Configuration for VanishKey
+version: "1.0"
+project:
+  name: VanishKey
+  id: com.vanishkey.app
+
+targets:
+  mobile:
+    directory: mobile_app
+    platforms:
+      android:
+        formats:
+          - apk
+          - aab
+        build_mode: release
+        output_directory: dist/android
+        signing:
+          keystore_path: env:ANDROID_KEYSTORE_PATH
+          keystore_password: env:ANDROID_KEYSTORE_PASSWORD
+          key_alias: env:ANDROID_KEY_ALIAS
+          key_password: env:ANDROID_KEY_PASSWORD
+      ios:
+        formats:
+          - ipa
+        build_mode: release
+        output_directory: dist/ios
+        signing:
+          export_method: app-store # or development / ad-hoc
+          provisioning_profile: env:IOS_PROVISIONING_PROFILE_SPECIFIER
+          code_sign_identity: "Apple Distribution"
+
+  desktop:
+    directory: desktop_agent
+    platforms:
+      windows:
+        formats:
+          - exe
+          - msix
+        build_mode: release
+        output_directory: dist/windows
+        inno_setup:
+          script: packaging/windows/installer.iss
+        signing:
+          pfx_path: env:WINDOWS_CERT_PATH
+          password: env:WINDOWS_CERT_PASSWORD
+          timestamp_server: "http://timestamp.digicert.com"
+      macos:
+        formats:
+          - dmg
+          - pkg
+        build_mode: release
+        output_directory: dist/macos
+        signing:
+          identity: "Developer ID Application: VanishKey Inc."
+          entitlements: packaging/macos/Entitlements.plist
+        notarization:
+          apple_id: env:APPLE_ID
+          password: env:APPLE_APP_SPECIFIC_PASSWORD
+          team_id: env:APPLE_TEAM_ID

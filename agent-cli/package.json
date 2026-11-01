@@ -1,0 +1,21 @@
+{
+  "name": "vanishkey-agent-cli",
+  "version": "1.0.0",
+  "description": "Minimal CLI Desktop Agent proof-of-concept for VanishKey",
+  "main": "src/index.js",
+  "bin": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "show-qr": "node src/generateQrPage.js",
+    "test-e2e": "node test/e2e-simulation.js"
+  },
+  "dependencies": {
+    "qrcode-terminal": "^0.12.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2"
+  }
+}

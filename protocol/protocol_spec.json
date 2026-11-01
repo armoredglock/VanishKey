@@ -1,0 +1,73 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "VanishKey Protocol Specification",
+  "version": "1.0.0",
+  "definitions": {
+    "RegistrationRequest": {
+      "type": "object",
+      "required": ["type", "deviceId", "deviceName", "osType", "publicKey", "pairingSecret"],
+      "properties": {
+        "type": { "type": "string", "enum": ["REGISTER_PENDING_DEVICE"] },
+        "deviceId": { "type": "string" },
+        "deviceName": { "type": "string" },
+        "osType": { "type": "string", "enum": ["windows", "macos"] },
+        "publicKey": { "type": "string", "description": "Base64-encoded X25519 public key" },
+        "pairingSecret": { "type": "string", "description": "Ephemeral pairing secret displayed in QR code" }
+      }
+    },
+    "PairRequest": {
+      "type": "object",
+      "required": ["ownerId", "deviceId", "pairingSecret", "phonePublicKey"],
+      "properties": {
+        "ownerId": { "type": "string" },
+        "deviceId": { "type": "string" },
+        "pairingSecret": { "type": "string" },
+        "phonePublicKey": { "type": "string", "description": "Base64-encoded X25519 public key" },
+        "deviceName": { "type": "string" }
+      }
+    },
+    "AccessRequest": {
+      "type": "object",
+      "required": ["type", "requestId", "ownerId", "deviceId", "durationMinutes", "ephemeralPhonePublicKey"],
+      "properties": {
+        "type": { "type": "string", "enum": ["ACCESS_REQUEST"] },
+        "requestId": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "deviceId": { "type": "string" },
+        "durationMinutes": { "type": "integer", "minimum": 1, "maximum": 5 },
+        "ephemeralPhonePublicKey": { "type": "string", "description": "One-time Base64 X25519 key" }
+      }
+    },
+    "AccessResponse": {
+      "type": "object",
+      "required": ["type", "requestId", "deviceId", "encryptedPayload", "iv", "authTag", "agentPublicKey"],
+      "properties": {
+        "type": { "type": "string", "enum": ["ACCESS_RESPONSE"] },
+        "requestId": { "type": "string" },
+        "deviceId": { "type": "string" },
+        "encryptedPayload": { "type": "string", "description": "Base64 AES-256-GCM ciphertext" },
+        "iv": { "type": "string", "description": "Base64 12-byte initialization vector" },
+        "authTag": { "type": "string", "description": "Base64 16-byte authentication tag" },
+        "agentPublicKey": { "type": "string", "description": "Base64 X25519 public key" }
+      }
+    },
+    "DecryptedCredential": {
+      "type": "object",
+      "required": ["username", "password", "expires_at", "duration_seconds"],
+      "properties": {
+        "username": { "type": "string" },
+        "password": { "type": "string" },
+        "expires_at": { "type": "string", "format": "date-time" },
+        "duration_seconds": { "type": "integer" }
+      }
+    },
+    "HeartbeatMessage": {
+      "type": "object",
+      "required": ["type", "timestamp"],
+      "properties": {
+        "type": { "type": "string", "enum": ["PING", "PONG"] },
+        "timestamp": { "type": "integer" }
+      }
+    }
+  }
+}

@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+package-lock.json
+npm-debug.log
+
+# Flutter & Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+*.pub_cache
+
+# OS and Temp
+.DS_Store
+Thumbs.db
+*.log
+agent-audit.log
+agent-config.json
+pairing-qr.html
+server/data/
+
+# Build Outputs
+dist/
