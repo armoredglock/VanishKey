@@ -26,7 +26,7 @@ class _QrScanScreenState extends State<QrScanScreen> with WidgetsBindingObserver
       detectionSpeed: DetectionSpeed.normal,
       facing: CameraFacing.back,
       torchEnabled: false,
-      autoStart: false,
+      returnImage: false,
     );
     _initPermissionsAndCamera();
   }
@@ -43,14 +43,6 @@ class _QrScanScreenState extends State<QrScanScreen> with WidgetsBindingObserver
         _hasCameraPermission = status.isGranted;
         _isCheckingPermission = false;
       });
-
-      if (_hasCameraPermission) {
-        try {
-          await _scannerController.start();
-        } catch (e) {
-          debugPrint('Error starting camera: $e');
-        }
-      }
     }
   }
 
@@ -435,11 +427,31 @@ class _QrScanScreenState extends State<QrScanScreen> with WidgetsBindingObserver
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 20),
-            ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0284C7)),
-              icon: const Icon(Icons.keyboard, color: Colors.white),
-              label: const Text('Enter PIN Manually Instead', style: TextStyle(color: Colors.white)),
-              onPressed: _showManualPairDialog,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFF38BDF8)),
+                    foregroundColor: const Color(0xFF38BDF8),
+                  ),
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Retry Camera'),
+                  onPressed: () async {
+                    try {
+                      await _scannerController.stop();
+                      await _scannerController.start();
+                    } catch (_) {}
+                  },
+                ),
+                const SizedBox(width: 12),
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0284C7)),
+                  icon: const Icon(Icons.keyboard, color: Colors.white),
+                  label: const Text('Enter PIN', style: TextStyle(color: Colors.white)),
+                  onPressed: _showManualPairDialog,
+                ),
+              ],
             ),
           ],
         ),

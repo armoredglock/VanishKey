@@ -62,6 +62,18 @@ jobs:
           sed -i 's/flutter.minSdkVersion/23/' android/app/build.gradle || true
           # Strip package attribute from AndroidManifest.xml (AGP 8+ requirement)
           sed -i 's/package="[^"]*"//g' android/app/src/main/AndroidManifest.xml || true
+          # Add MLKit & CameraX ProGuard rules to prevent R8 reflection crashes
+          cat << 'EOF' >> android/app/proguard-rules.pro
+          -keep class com.google.mlkit.** { *; }
+          -keep class com.google.android.gms.internal.mlkit_vision_barcode.** { *; }
+          -keep class com.google.android.gms.internal.mlkit_** { *; }
+          -keep class com.google.android.libraries.barhopper.** { *; }
+          -keep class dev.steenbakker.mobile_scanner.** { *; }
+          -keep class androidx.camera.** { *; }
+          -keepclassmembers enum * { *; }
+          -dontwarn com.google.mlkit.**
+          -dontwarn dev.steenbakker.mobile_scanner.**
+          EOF
           flutter pub get
           flutter build apk --release
 
