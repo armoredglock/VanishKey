@@ -54,11 +54,14 @@ jobs:
         working-directory: mobile_app
         run: |
           flutter create --platforms=android .
+          # Ensure FlutterFragmentActivity for Android Fingerprint / BiometricPrompt
+          sed -i 's/FlutterActivity/FlutterFragmentActivity/g' android/app/src/main/kotlin/*/*/*/MainActivity.kt || true
+          sed -i 's/FlutterActivity/FlutterFragmentActivity/g' android/app/src/main/kotlin/*/*/MainActivity.kt || true
           # Ensure minSdk is 23 for biometric & security plugins
           sed -i 's/minSdkVersion [0-9]*/minSdkVersion 23/' android/app/build.gradle || true
           sed -i 's/flutter.minSdkVersion/23/' android/app/build.gradle || true
           # Inject camera and network permissions into AndroidManifest.xml
-          sed -i '/<application/i \    <uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.CAMERA"/>\n    <uses-feature android:name="android.hardware.camera" android:required="false" />\n    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />' android/app/src/main/AndroidManifest.xml || true
+          sed -i '/<application/i \    <uses-permission android:name="android.permission.INTERNET"/>\n    <uses-permission android:name="android.permission.CAMERA"/>\n    <uses-permission android:name="android.permission.USE_BIOMETRIC"/>\n    <uses-permission android:name="android.permission.USE_FINGERPRINT"/>\n    <uses-feature android:name="android.hardware.camera" android:required="false" />\n    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />' android/app/src/main/AndroidManifest.xml || true
           flutter pub get
           flutter build apk --release
 
@@ -127,10 +130,10 @@ jobs:
       - name: Publish GitHub Release (v1.0.0)
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.0
-          name: "VanishKey v1.0.0 - Official Release"
+          tag_name: ${{ github.ref_name }}
+          name: "VanishKey ${{ github.ref_name }} Release"
           body: |
-            ## VanishKey v1.0.0
+            ## VanishKey ${{ github.ref_name }}
             
             Zero-knowledge, time-limited ephemeral laptop access for shared rooms & dorms.
             

@@ -160,6 +160,17 @@ class _PinLockScreenState extends State<PinLockScreen> {
                 );
               }),
             ),
+            if (!_isSettingUp) ...[
+              const SizedBox(height: 16),
+              TextButton.icon(
+                onPressed: _tryBiometricPrompt,
+                icon: const Icon(Icons.fingerprint, color: Color(0xFF38BDF8), size: 28),
+                label: const Text(
+                  'Unlock with Fingerprint',
+                  style: TextStyle(color: Color(0xFF38BDF8), fontSize: 15, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
             const Spacer(),
             // Numeric Keypad
             Padding(

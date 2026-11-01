@@ -31,24 +31,23 @@ class AuthService {
   }
 
   /// Authenticate with device Biometrics (Fingerprint / FaceID)
-  Future<bool> authenticateBiometrics({String reason = 'Authenticate to generate temporary access key'}) async {
+  Future<bool> authenticateBiometrics({String reason = 'Authenticate with your fingerprint to access VanishKey'}) async {
     try {
       final isAvailable = await _localAuth.canCheckBiometrics;
       final isDeviceSupported = await _localAuth.isDeviceSupported();
 
-      if (!isAvailable || !isDeviceSupported) {
-        // Biometrics unavailable on hardware, fallback to PIN gate only
-        return true;
+      if (!isAvailable && !isDeviceSupported) {
+        return false;
       }
 
       return await _localAuth.authenticate(
         localizedReason: reason,
         options: const AuthenticationOptions(
           stickyAuth: true,
-          biometricOnly: true,
+          biometricOnly: false,
         ),
       );
-    } on PlatformException {
+    } catch (e) {
       return false;
     }
   }

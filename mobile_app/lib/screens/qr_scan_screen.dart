@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import '../services/relay_service.dart';
 
@@ -11,13 +12,54 @@ class QrScanScreen extends StatefulWidget {
   State<QrScanScreen> createState() => _QrScanScreenState();
 }
 
-class _QrScanScreenState extends State<QrScanScreen> {
-  final MobileScannerController _scannerController = MobileScannerController(
-    detectionSpeed: DetectionSpeed.normal,
-    facing: CameraFacing.back,
-    torchEnabled: false,
-  );
+class _QrScanScreenState extends State<QrScanScreen> with WidgetsBindingObserver {
+  late MobileScannerController _scannerController;
+  bool _hasCameraPermission = false;
+  bool _isCheckingPermission = true;
   bool _isProcessing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _scannerController = MobileScannerController(
+      detectionSpeed: DetectionSpeed.normal,
+      facing: CameraFacing.back,
+      torchEnabled: false,
+      autoStart: false,
+    );
+    _initPermissionsAndCamera();
+  }
+
+  Future<void> _initPermissionsAndCamera() async {
+    setState(() { _isCheckingPermission = true; });
+    var status = await Permission.camera.status;
+    if (!status.isGranted) {
+      status = await Permission.camera.request();
+    }
+
+    if (mounted) {
+      setState(() {
+        _hasCameraPermission = status.isGranted;
+        _isCheckingPermission = false;
+      });
+
+      if (_hasCameraPermission) {
+        try {
+          await _scannerController.start();
+        } catch (e) {
+          debugPrint('Error starting camera: $e');
+        }
+      }
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _initPermissionsAndCamera();
+    }
+  }
 
   void _onDetect(BarcodeCapture capture) async {
     if (_isProcessing) return;
@@ -116,12 +158,16 @@ class _QrScanScreenState extends State<QrScanScreen> {
             SnackBar(content: Text('Pairing failed: $e')),
           );
           setState(() { _isProcessing = false; });
-          _scannerController.start();
+          if (_hasCameraPermission) {
+            _scannerController.start();
+          }
         }
       }
     } else {
       setState(() { _isProcessing = false; });
-      _scannerController.start();
+      if (_hasCameraPermission) {
+        _scannerController.start();
+      }
     }
   }
 
@@ -177,7 +223,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
                 ),
               ),
               const SizedBox(height: 12),
-              const Text('6-Digit Pairing Secret / PIN:', style: TextStyle(color: Colors.white70, fontSize: 12)),
+              const Text('6-Digit Pairing PIN:', style: TextStyle(color: Colors.white70, fontSize: 12)),
               const SizedBox(height: 6),
               TextField(
                 controller: pinController,
@@ -229,6 +275,7 @@ class _QrScanScreenState extends State<QrScanScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _scannerController.dispose();
     super.dispose();
   }
@@ -241,103 +288,161 @@ class _QrScanScreenState extends State<QrScanScreen> {
         title: const Text('Scan Desktop QR Code'),
         backgroundColor: const Color(0xFF1E293B),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.flash_on, color: Colors.white70),
-            tooltip: 'Toggle Flash',
-            onPressed: () => _scannerController.toggleTorch(),
-          ),
-          IconButton(
-            icon: const Icon(Icons.flip_camera_ios, color: Colors.white70),
-            tooltip: 'Flip Camera',
-            onPressed: () => _scannerController.switchCamera(),
-          ),
+          if (_hasCameraPermission) ...[
+            IconButton(
+              icon: const Icon(Icons.flash_on, color: Colors.white70),
+              tooltip: 'Toggle Flash',
+              onPressed: () => _scannerController.toggleTorch(),
+            ),
+            IconButton(
+              icon: const Icon(Icons.flip_camera_ios, color: Colors.white70),
+              tooltip: 'Flip Camera',
+              onPressed: () => _scannerController.switchCamera(),
+            ),
+          ],
         ],
       ),
-      body: Stack(
-        children: [
-          MobileScanner(
-            controller: _scannerController,
-            onDetect: _onDetect,
-            errorBuilder: (context, error, child) {
-              return Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.camera_alt_outlined, size: 64, color: Colors.orangeAccent),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Camera unavailable or permission needed',
-                        style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                        textAlign: TextAlign.center,
+      body: _isCheckingPermission
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF38BDF8)))
+          : (!_hasCameraPermission
+              ? _buildPermissionFallback()
+              : Stack(
+                  children: [
+                    MobileScanner(
+                      controller: _scannerController,
+                      onDetect: _onDetect,
+                      errorBuilder: (context, error, child) {
+                        return _buildCameraErrorView(error);
+                      },
+                    ),
+                    Center(
+                      child: Container(
+                        width: 260,
+                        height: 260,
+                        decoration: BoxDecoration(
+                          border: Border.all(color: const Color(0xFF38BDF8), width: 3),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        '${error.errorCode.name}: ${error.errorDetails?.message ?? "Could not start camera."}',
-                        style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
-                        textAlign: TextAlign.center,
+                    ),
+                    Positioned(
+                      bottom: 30,
+                      left: 20,
+                      right: 20,
+                      child: Column(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1E293B).withOpacity(0.9),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Text(
+                              'Point camera at the QR code displayed on your laptop screen',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: Colors.white, fontSize: 13),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              backgroundColor: const Color(0xFF1E293B),
+                              side: const BorderSide(color: Color(0xFF38BDF8)),
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            icon: const Icon(Icons.keyboard_alt_outlined, color: Color(0xFF38BDF8)),
+                            label: const Text(
+                              "Can't scan? Enter PIN manually",
+                              style: TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold),
+                            ),
+                            onPressed: _showManualPairDialog,
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 24),
-                      ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0284C7)),
-                        icon: const Icon(Icons.keyboard, color: Colors.white),
-                        label: const Text('Enter Code Manually Instead', style: TextStyle(color: Colors.white)),
-                        onPressed: _showManualPairDialog,
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-          Center(
-            child: Container(
-              width: 260,
-              height: 260,
-              decoration: BoxDecoration(
-                border: Border.all(color: const Color(0xFF38BDF8), width: 3),
-                borderRadius: BorderRadius.circular(16),
+                    ),
+                  ],
+                )),
+    );
+  }
+
+  Widget _buildPermissionFallback() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(28.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.camera_alt_outlined, size: 72, color: Colors.orangeAccent),
+            const SizedBox(height: 20),
+            const Text(
+              'Camera Permission Required',
+              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'To scan the pairing QR code, allow camera access. Or pair directly using the 6-digit PIN shown on your laptop.',
+              style: TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF0284C7),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
+              icon: const Icon(Icons.settings, color: Colors.white),
+              label: const Text('Open App Settings', style: TextStyle(color: Colors.white, fontSize: 15)),
+              onPressed: () => openAppSettings(),
             ),
-          ),
-          Positioned(
-            bottom: 30,
-            left: 20,
-            right: 20,
-            child: Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1E293B).withOpacity(0.9),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Text(
-                    'Point camera at the QR code displayed on your laptop screen',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white, fontSize: 13),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1E293B),
-                    side: const BorderSide(color: Color(0xFF38BDF8)),
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  icon: const Icon(Icons.keyboard_alt_outlined, color: Color(0xFF38BDF8)),
-                  label: const Text(
-                    "Can't scan? Enter PIN manually",
-                    style: TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold),
-                  ),
-                  onPressed: _showManualPairDialog,
-                ),
-              ],
+            const SizedBox(height: 14),
+            OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Color(0xFF38BDF8)),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              icon: const Icon(Icons.keyboard_alt_outlined, color: Color(0xFF38BDF8)),
+              label: const Text('Enter 6-Digit PIN Manually', style: TextStyle(color: Color(0xFF38BDF8))),
+              onPressed: _showManualPairDialog,
             ),
-          ),
-        ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCameraErrorView(MobileScannerException error) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.videocam_off_outlined, size: 64, color: Colors.orangeAccent),
+            const SizedBox(height: 16),
+            const Text(
+              'Camera Initializing Issue',
+              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '${error.errorCode.name}: ${error.errorDetails?.message ?? "Device camera hardware could not be locked."}',
+              style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0284C7)),
+              icon: const Icon(Icons.keyboard, color: Colors.white),
+              label: const Text('Enter PIN Manually Instead', style: TextStyle(color: Colors.white)),
+              onPressed: _showManualPairDialog,
+            ),
+          ],
+        ),
       ),
     );
   }
