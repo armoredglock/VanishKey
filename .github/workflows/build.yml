@@ -90,6 +90,7 @@ jobs:
 
       - name: Package Windows Portable Release (Zip)
         run: |
+          New-Item -ItemType Directory -Force -Path dist\windows
           Compress-Archive -Path desktop_agent\build\windows\x64\runner\Release\* -DestinationPath dist\windows\VanishKey-Windows-Portable.zip -Force
 
       - name: Upload Windows Host Artifact

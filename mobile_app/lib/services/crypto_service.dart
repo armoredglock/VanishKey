@@ -5,7 +5,7 @@ import '../models/credential.dart';
 
 class MobileCryptoService {
   final X25519 _x25519 = X25519();
-  final AesGcm _aesGcm = AesGcm.with256Bits();
+  final AesGcm _aesGcm = AesGcm.with256bits();
   final Hkdf _hkdf = Hkdf(
     hmac: Hmac.sha256(),
     outputLength: 32,
