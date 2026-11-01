@@ -1,25 +1,22 @@
 @echo off
-title VanishKey Desktop Host Launcher
+title VanishKey Desktop Host
 
 :: Check for Administrator elevation and self-elevate
 net session >nul 2>&1
 if %errorlevel% neq 0 (
-    echo ===================================================
-    echo  Requesting Administrator privileges...
-    echo ===================================================
-    powershell -NoProfile -Command "Start-Process cmd -ArgumentList '/k cd /d \"%~dp0\" && \"%~f0\"' -Verb RunAs"
+    echo [i] Requesting Administrator privileges...
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%~f0' -Verb RunAs"
     exit /b
 )
 
-cd /d "%~dp0agent-cli"
+cd /d "D:\PROJECTS\VanishKey\agent-cli"
 echo ===================================================
 echo   Starting VanishKey Desktop Host (Admin Mode)...
 echo ===================================================
-echo [✔] Administrator privileges confirmed.
-echo [✔] Host Agent is active and connected to Relay.
-echo [✔] Ready to generate temporary accounts on phone command.
+echo [✔] Running with Administrator privileges.
+echo [✔] Connecting to VanishKey Relay Server...
 echo.
-echo Minimizing or keep this window open in background.
+echo Please KEEP this window open in the background!
 echo ===================================================
 echo.
 node src/index.js

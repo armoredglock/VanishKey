@@ -149,6 +149,7 @@ export class RelayHub {
         this.pendingAccessRequests.delete(requestId);
 
         if (error) {
+          globalRateLimiter.refund(pending.ownerId);
           store.logAudit({
             ownerId: pending.ownerId,
             deviceId,
@@ -252,6 +253,7 @@ export class RelayHub {
         // Check if Desktop Agent is connected
         const agentWs = this.agents.get(deviceId);
         if (!agentWs || agentWs.readyState !== WebSocket.OPEN) {
+          globalRateLimiter.refund(ownerId);
           store.logAudit({
             ownerId,
             deviceId,
@@ -270,6 +272,7 @@ export class RelayHub {
 
         // Set up pending request tracking with timeout (15 seconds)
         const timer = setTimeout(() => {
+          globalRateLimiter.refund(ownerId);
           this.pendingAccessRequests.delete(requestId);
           store.logAudit({
             ownerId,

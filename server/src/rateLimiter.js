@@ -44,6 +44,18 @@ export class RateLimiter {
   }
 
   /**
+   * Refund one consumed slot (e.g. if the target device was offline or script failed)
+   */
+  refund(ownerId) {
+    const timestamps = this.records.get(ownerId) || [];
+    if (timestamps.length > 0) {
+      timestamps.pop();
+      this.records.set(ownerId, timestamps);
+      logger.info({ ownerId, remaining: this.maxRequests - timestamps.length }, 'Rate limit slot refunded');
+    }
+  }
+
+  /**
    * Reset rate limit records for an owner (useful for testing)
    */
   reset(ownerId) {
