@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: vanishkey-relay
+    env: node
+    plan: free
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 10000

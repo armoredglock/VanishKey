@@ -52,13 +52,9 @@ function New-SecureRandomPassword {
     return -join $result
 }
 
-# Generate unique username if not provided
+# Generate friendly username if not provided
 if ([string]::IsNullOrWhiteSpace($Username)) {
-    $rngBytes = New-Object byte[] 3
-    $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
-    $rng.GetBytes($rngBytes)
-    $hexSuffix = -join ($rngBytes | ForEach-Object { $_.ToString("X2") })
-    $Username = "VK_Temp_$hexSuffix"
+    $Username = "VanishGuest"
 }
 
 # Generate CSPRNG password
@@ -67,15 +63,15 @@ $secPassword = ConvertTo-SecureString $plainPassword -AsPlainText -Force
 
 # Create the local user
 try {
-    # Check if user already exists
+    # Check if user already exists from previous session and clean up first
     $existing = Get-LocalUser -Name $Username -ErrorAction SilentlyContinue
     if ($existing) {
-        Remove-LocalUser -Name $Username -ErrorAction Stop
+        Remove-LocalUser -Name $Username -ErrorAction SilentlyContinue
     }
 
     $newUser = New-LocalUser -Name $Username `
         -Password $secPassword `
-        -FullName "VanishKey User ($Username)" `
+        -FullName "Temporary Guest Access" `
         -Description "VanishKey Ephemeral Temporary Account" `
         -PasswordNeverExpires:$false `
         -UserMayNotChangePassword:$true `
