@@ -22,16 +22,12 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: 'npm'
-          cache-dependency-path: |
-            server/package.json
-            agent-cli/package.json
+          node-version: 22
 
       - name: Test Server & CLI Agent E2E
         run: |
-          cd server && npm ci
-          cd ../agent-cli && npm ci
+          cd server && npm install
+          cd ../agent-cli && npm install
           npm run test-e2e
 
       - name: Build Docker Container
