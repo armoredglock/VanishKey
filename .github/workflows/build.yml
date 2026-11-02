@@ -108,7 +108,12 @@ jobs:
       - name: Package Windows Portable Release (Zip)
         run: |
           New-Item -ItemType Directory -Force -Path dist\windows
-          & "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /target:winexe /win32manifest:windows-app/app.manifest /r:System.dll,System.Drawing.dll,System.Windows.Forms.dll /out:dist\windows\VanishKeyHost.exe windows-app/VanishKeyHost.cs
+          if (Test-Path "windows-app\VanishKeyHost.cs") {
+            & "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /target:winexe /win32manifest:windows-app\app.manifest /r:System.dll,System.Drawing.dll,System.Windows.Forms.dll /out:dist\windows\VanishKeyHost.exe windows-app\VanishKeyHost.cs
+          }
+          if (-not (Test-Path "dist\windows\VanishKeyHost.exe") -and (Test-Path "VanishKeyHost.exe")) {
+            Copy-Item VanishKeyHost.exe dist\windows\VanishKeyHost.exe -Force
+          }
           Compress-Archive -Path desktop_agent\build\windows\x64\runner\Release\* -DestinationPath dist\windows\VanishKey-Windows-Portable.zip -Force
 
       - name: Upload Windows Host Artifact
