@@ -1,7 +1,7 @@
 services:
   - type: web
     name: vanishkey-relay
-    env: node
+    runtime: node
     plan: free
     rootDir: server
     buildCommand: npm install
