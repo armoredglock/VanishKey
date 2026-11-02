@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
@@ -64,6 +65,7 @@ class _QrScanScreenState extends State<QrScanScreen> with WidgetsBindingObserver
           if (data is Map<String, dynamic> &&
               data.containsKey('deviceId') &&
               data.containsKey('pairingSecret')) {
+            HapticFeedback.mediumImpact();
             setState(() { _isProcessing = true; });
             _scannerController.stop();
             await _handlePairing(

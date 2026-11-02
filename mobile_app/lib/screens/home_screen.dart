@@ -797,6 +797,7 @@ class HomeScreen extends StatelessWidget {
                 await context.read<RelayService>().pairDevice(
                   deviceId: devId,
                   pairingSecret: pin,
+                  devicePublicKey: '',
                   customName: 'Laptop ($devId)',
                 );
                 if (context.mounted) {
