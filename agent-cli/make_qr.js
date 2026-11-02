@@ -2,7 +2,7 @@ import QRCode from 'qrcode';
 import qrcodeTerminal from 'qrcode-terminal';
 import fs from 'node:fs';
 
-const publicUrl = 'https://rhode-mathematical-less-load.trycloudflare.com';
+const publicUrl = 'https://vanishkey-relay.onrender.com';
 
 const payload = JSON.stringify({
   deviceId: 'dev_win32_1677AA',
@@ -19,20 +19,20 @@ await QRCode.toFile(outDir + '/vanishkey_qr_global.png', payload, {
   color: { dark: '#0284C7', light: '#FFFFFF' }
 });
 
-console.log('---GLOBAL_QR_START---');
+console.log('---RENDER_QR_START---');
 qrcodeTerminal.generate(payload, { small: true });
-console.log('---GLOBAL_QR_END---');
+console.log('---RENDER_QR_END---');
 
 const htmlContent = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
-  <title>VanishKey Global Cloud Pairing QR</title>
+  <title>VanishKey 24/7 Cloud Pairing QR</title>
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <style>
     body { background: #0f172a; color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
     .card { background: #1e293b; border: 1px solid #334155; border-radius: 16px; padding: 32px; text-align: center; max-width: 480px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
-    .badge { display: inline-block; background: #0284c7; color: #fff; font-size: 11px; font-weight: bold; padding: 4px 10px; border-radius: 12px; margin-bottom: 12px; }
+    .badge { display: inline-block; background: #059669; color: #fff; font-size: 11px; font-weight: bold; padding: 4px 10px; border-radius: 12px; margin-bottom: 12px; }
     h1 { font-size: 24px; margin-bottom: 8px; color: #38bdf8; }
     p { font-size: 14px; color: #94a3b8; margin-top: 0; line-height: 1.5; }
     #qrcode { background: white; padding: 16px; border-radius: 12px; display: inline-block; margin: 16px 0; }
@@ -42,9 +42,9 @@ const htmlContent = `<!DOCTYPE html>
 </head>
 <body>
   <div class="card">
-    <div class="badge">🌐 Global Cloud Relay Active</div>
+    <div class="badge">☁ 24/7 Render Cloud Relay Active</div>
     <h1>VanishKey Worldwide Pairing</h1>
-    <p>Scan with your phone on <b>ANY</b> Wi-Fi or <b>5G / LTE Mobile Data</b> anywhere in the world.</p>
+    <p>Scan with your phone on <b>ANY</b> network (5G, LTE, or Wi-Fi anywhere in the world).</p>
     <div id="qrcode"></div>
     <div class="code">
       <b>Cloud Relay URL:</b> ${publicUrl}<br>

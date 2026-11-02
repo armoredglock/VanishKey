@@ -9,15 +9,17 @@ if %errorlevel% neq 0 (
     exit /b
 )
 
-cd /d "D:\PROJECTS\VanishKey\agent-cli"
+cd /d "%~dp0agent-cli"
 echo ===================================================
-echo   Starting VanishKey Desktop Host (Admin Mode)...
+echo     VanishKey Desktop Host (24/7 Cloud Mode)
 echo ===================================================
-echo [✔] Running with Administrator privileges.
-echo [✔] Connecting to VanishKey Relay Server...
+echo [✔] Administrator privileges confirmed.
+echo [✔] Connecting to 24/7 Render Cloud Relay:
+echo     https://vanishkey-relay.onrender.com
 echo.
-echo Please KEEP this window open in the background!
+echo Host Agent is active. Keep this window open in background.
 echo ===================================================
 echo.
+set RELAY_URL=https://vanishkey-relay.onrender.com
 node src/index.js
 pause
