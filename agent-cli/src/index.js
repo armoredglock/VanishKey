@@ -5,6 +5,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { execSync } from 'node:child_process';
 import qrcodeTerminal from 'qrcode-terminal';
+import QRCode from 'qrcode';
 import { generateX25519KeyPair, deriveSessionKey, encryptPayload } from './cryptoHelper.js';
 import { createTemporaryUser, deleteTemporaryUser } from './scriptRunner.js';
 
@@ -164,6 +165,9 @@ function connect() {
 </body>
 </html>`;
       fs.writeFileSync(path.join(process.cwd(), 'pairing-qr.html'), htmlContent, 'utf8');
+      try {
+        QRCode.toFile(path.join(process.cwd(), 'pairing-qr.png'), pairingPayload, { width: 320, margin: 2 }, () => {});
+      } catch (e) {}
       console.log('\n[Tip] You can also open "pairing-qr.html" in your web browser to scan!');
       console.log('Pairing JSON Payload:');
       console.log(pairingPayload);

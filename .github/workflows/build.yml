@@ -108,6 +108,7 @@ jobs:
       - name: Package Windows Portable Release (Zip)
         run: |
           New-Item -ItemType Directory -Force -Path dist\windows
+          & "C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /target:winexe /win32manifest:windows-app/app.manifest /r:System.dll,System.Drawing.dll,System.Windows.Forms.dll /out:dist\windows\VanishKeyHost.exe windows-app/VanishKeyHost.cs
           Compress-Archive -Path desktop_agent\build\windows\x64\runner\Release\* -DestinationPath dist\windows\VanishKey-Windows-Portable.zip -Force
 
       - name: Upload Windows Host Artifact
@@ -116,6 +117,7 @@ jobs:
           name: VanishKey-Windows-App
           path: |
             dist/windows/VanishKey-Windows-Portable.zip
+            dist/windows/VanishKeyHost.exe
             desktop_agent/build/windows/x64/runner/Release/vanishkey_desktop_agent.exe
 
   # -------------------------------------------------------------
@@ -150,10 +152,12 @@ jobs:
             Zero-knowledge, time-limited ephemeral laptop access for shared rooms & dorms.
             
             ### Downloads:
-            - 📱 **Android Phone App:** `app-release.apk` (Direct install / sideload)
-            - 💻 **Windows Desktop Host:** `VanishKey-Windows-Portable.zip` (Extract & run `vanishkey_desktop_agent.exe`)
+            - 📱 **Android Mobile App:** `app-release.apk` (Direct install / sideload)
+            - 💻 **Windows Desktop Host App (New):** `VanishKeyHost.exe` (Native GUI & System Tray with Live QR)
+            - 💻 **Windows Portable Bundle:** `VanishKey-Windows-Portable.zip`
           files: |
             release-assets/android/app-release.apk
+            release-assets/windows/VanishKeyHost.exe
             release-assets/windows/VanishKey-Windows-Portable.zip
           draft: false
           prerelease: false

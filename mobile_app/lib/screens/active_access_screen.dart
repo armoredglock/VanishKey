@@ -157,9 +157,10 @@ Note: Standard guest permissions only. This temporary session automatically logs
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
-        child: Column(
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+          child: Column(
           children: [
             // Circular Countdown Timer
             Center(
@@ -329,7 +330,8 @@ Note: Standard guest permissions only. This temporary session automatically logs
           ],
         ),
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildCredentialCard({

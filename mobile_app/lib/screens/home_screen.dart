@@ -875,7 +875,8 @@ class HomeScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: relay.pairedDevices.isEmpty
+      body: SafeArea(
+        child: relay.pairedDevices.isEmpty
           ? Center(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
@@ -1095,6 +1096,7 @@ class HomeScreen extends StatelessWidget {
                 },
               ),
             ),
+      ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: const Color(0xFF0284C7),
         onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const QrScanScreen())),

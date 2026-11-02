@@ -17,7 +17,8 @@ class HistoryScreen extends StatelessWidget {
         title: const Text('Security Audit Trail'),
         backgroundColor: const Color(0xFF0A0E1A),
       ),
-      body: Column(
+      body: SafeArea(
+        child: Column(
         children: [
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -192,6 +193,7 @@ class HistoryScreen extends StatelessWidget {
           ),
         ],
       ),
-    );
+    ),
+  );
   }
 }
