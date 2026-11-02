@@ -599,29 +599,45 @@ class HomeScreen extends StatelessWidget {
                 itemCount: relay.pairedDevices.length,
                 itemBuilder: (context, idx) {
                   final dev = relay.pairedDevices[idx];
-                  return Card(
-                    color: const Color(0xFF1E293B),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      side: BorderSide(
-                        color: dev.isOnline ? const Color(0xFF0284C7) : const Color(0xFF334155),
-                        width: 1.5,
-                      ),
-                    ),
+                  return Container(
                     margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF131B2E),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: dev.isOnline ? const Color(0xFF0284C7) : const Color(0xFF1E293B),
+                        width: dev.isOnline ? 1.5 : 1.2,
+                      ),
+                      boxShadow: dev.isOnline
+                          ? [
+                              BoxShadow(
+                                color: const Color(0xFF0284C7).withOpacity(0.15),
+                                blurRadius: 16,
+                                spreadRadius: 1,
+                              ),
+                            ]
+                          : null,
+                    ),
                     child: Padding(
-                      padding: const EdgeInsets.all(16.0),
+                      padding: const EdgeInsets.all(18.0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
                             children: [
-                              Icon(
-                                dev.osType == 'macos' ? Icons.laptop_mac : Icons.laptop_windows,
-                                size: 32,
-                                color: const Color(0xFF38BDF8),
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF0C4A6E).withOpacity(0.25),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(
+                                  dev.osType == 'macos' ? Icons.laptop_mac_rounded : Icons.laptop_windows_rounded,
+                                  size: 26,
+                                  color: const Color(0xFF38BDF8),
+                                ),
                               ),
-                              const SizedBox(width: 12),
+                              const SizedBox(width: 14),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -629,62 +645,94 @@ class HomeScreen extends StatelessWidget {
                                     Text(
                                       dev.deviceName,
                                       style: const TextStyle(
-                                        fontSize: 18,
+                                        fontSize: 17,
                                         fontWeight: FontWeight.bold,
                                         color: Colors.white,
                                       ),
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
-                                      dev.osType.toUpperCase(),
-                                      style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                                      '${dev.osType.toUpperCase()} • ${dev.deviceId}',
+                                      style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8), letterSpacing: 0.3),
                                     ),
                                   ],
                                 ),
                               ),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: dev.isOnline ? const Color(0xFF065F46) : const Color(0xFF334155),
+                                  color: dev.isOnline ? const Color(0xFF065F46) : const Color(0xFF1E293B),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
-                                child: Text(
-                                  dev.isOnline ? 'ONLINE' : 'OFFLINE',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                    color: dev.isOnline ? const Color(0xFF34D399) : const Color(0xFF94A3B8),
-                                  ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      width: 6,
+                                      height: 6,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: dev.isOnline ? const Color(0xFF34D399) : const Color(0xFF64748B),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      dev.isOnline ? 'ONLINE' : 'OFFLINE',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: dev.isOnline ? const Color(0xFF34D399) : const Color(0xFF94A3B8),
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                               PopupMenuButton<String>(
-                                icon: const Icon(Icons.more_vert, color: Colors.white70),
+                                icon: const Icon(Icons.more_vert_rounded, color: Colors.white70),
                                 color: const Color(0xFF1E293B),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                 onSelected: (val) {
                                   if (val == 'revoke') _confirmRevoke(context, dev);
                                 },
                                 itemBuilder: (_) => [
                                   const PopupMenuItem(
                                     value: 'revoke',
-                                    child: Text('Revoke Pairing', style: TextStyle(color: Colors.redAccent)),
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.link_off_rounded, color: Colors.redAccent, size: 18),
+                                        SizedBox(width: 8),
+                                        Text('Revoke Laptop', style: TextStyle(color: Colors.redAccent, fontSize: 13)),
+                                      ],
+                                    ),
                                   ),
                                 ],
                               ),
                             ],
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 18),
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton.icon(
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: dev.isOnline ? const Color(0xFF0284C7) : const Color(0xFF334155),
-                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                backgroundColor: dev.isOnline ? const Color(0xFF0284C7) : const Color(0xFF1E293B),
+                                foregroundColor: Colors.white,
+                                elevation: dev.isOnline ? 2 : 0,
+                                padding: const EdgeInsets.symmetric(vertical: 15),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                               ),
-                              icon: const Icon(Icons.key, color: Colors.white),
-                              label: const Text(
-                                'Generate Temporary Access',
-                                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white),
+                              icon: Icon(
+                                Icons.key_rounded,
+                                color: dev.isOnline ? Colors.white : const Color(0xFF64748B),
+                                size: 18,
+                              ),
+                              label: Text(
+                                dev.isOnline ? 'Generate Temporary Access' : 'Laptop Offline (Waiting for Host)',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: dev.isOnline ? Colors.white : const Color(0xFF64748B),
+                                ),
                               ),
                               onPressed: dev.isOnline ? () => _handleGenerateAccess(context, dev) : null,
                             ),

@@ -121,58 +121,105 @@ class _PinLockScreenState extends State<PinLockScreen> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: const Color(0xFF0A0E1A),
       body: SafeArea(
         child: Column(
           children: [
             const Spacer(),
-            const Icon(Icons.shield_outlined, size: 72, color: Color(0xFF38BDF8)),
-            const SizedBox(height: 16),
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: const Color(0xFF0C4A6E).withOpacity(0.3),
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFF0284C7).withOpacity(0.5), width: 1.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF0284C7).withOpacity(0.2),
+                    blurRadius: 20,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: const Center(
+                child: Icon(Icons.shield_rounded, size: 42, color: Color(0xFF38BDF8)),
+              ),
+            ),
+            const SizedBox(height: 20),
             const Text(
               'VanishKey',
               style: TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
-                letterSpacing: 1.2,
+                letterSpacing: 1.5,
               ),
             ),
             const SizedBox(height: 8),
             Text(
               _statusMessage,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 14, color: Color(0xFF94A3B8)),
+              style: const TextStyle(fontSize: 14, color: Color(0xFF94A3B8), fontWeight: FontWeight.w400),
             ),
-            const SizedBox(height: 24),
-            // PIN Dots Indicator
+            const SizedBox(height: 32),
+            // Glowing PIN Dots Indicator
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(6, (index) {
                 final isFilled = index < _enteredPin.length;
-                return Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 8),
-                  width: 16,
-                  height: 16,
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  margin: const EdgeInsets.symmetric(horizontal: 9),
+                  width: isFilled ? 18 : 14,
+                  height: isFilled ? 18 : 14,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: isFilled ? const Color(0xFF38BDF8) : const Color(0xFF334155),
+                    color: isFilled ? const Color(0xFF38BDF8) : const Color(0xFF1E293B),
+                    border: Border.all(
+                      color: isFilled ? const Color(0xFF38BDF8) : const Color(0xFF334155),
+                      width: 1.5,
+                    ),
+                    boxShadow: isFilled
+                        ? [
+                            BoxShadow(
+                              color: const Color(0xFF38BDF8).withOpacity(0.5),
+                              blurRadius: 10,
+                              spreadRadius: 1,
+                            ),
+                          ]
+                        : null,
                   ),
                 );
               }),
             ),
             if (!_isSettingUp) ...[
-              const SizedBox(height: 16),
-              TextButton.icon(
-                onPressed: _tryBiometricPrompt,
-                icon: const Icon(Icons.fingerprint, color: Color(0xFF38BDF8), size: 28),
-                label: const Text(
-                  'Unlock with Fingerprint',
-                  style: TextStyle(color: Color(0xFF38BDF8), fontSize: 15, fontWeight: FontWeight.bold),
+              const SizedBox(height: 24),
+              InkWell(
+                onTap: _tryBiometricPrompt,
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF131B2E),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color(0xFF1E293B)),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.fingerprint_rounded, color: Color(0xFF38BDF8), size: 22),
+                      SizedBox(width: 8),
+                      Text(
+                        'Unlock with Biometrics',
+                        style: TextStyle(color: Color(0xFF38BDF8), fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
             const Spacer(),
-            // Numeric Keypad
+            // Numeric Keypad with Authentic Sub-labels
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 40),
               child: Column(
@@ -182,7 +229,7 @@ class _PinLockScreenState extends State<PinLockScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
                         for (var col = 1; col <= 3; col++) ...[
-                          _buildNumBtn('${row * 3 + col}'),
+                          _buildNumBtn('${row * 3 + col}', _getSubletters(row * 3 + col)),
                         ],
                       ],
                     ),
@@ -192,13 +239,13 @@ class _PinLockScreenState extends State<PinLockScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       IconButton(
-                        iconSize: 32,
-                        icon: const Icon(Icons.fingerprint, color: Color(0xFF38BDF8)),
+                        iconSize: 28,
+                        icon: const Icon(Icons.fingerprint_rounded, color: Color(0xFF38BDF8)),
                         onPressed: _isSettingUp ? null : _tryBiometricPrompt,
                       ),
-                      _buildNumBtn('0'),
+                      _buildNumBtn('0', '+'),
                       IconButton(
-                        iconSize: 32,
+                        iconSize: 28,
                         icon: const Icon(Icons.backspace_outlined, color: Colors.white70),
                         onPressed: _onDelete,
                       ),
@@ -207,14 +254,28 @@ class _PinLockScreenState extends State<PinLockScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 36),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildNumBtn(String digit) {
+  static String _getSubletters(int num) {
+    switch (num) {
+      case 2: return 'ABC';
+      case 3: return 'DEF';
+      case 4: return 'GHI';
+      case 5: return 'JKL';
+      case 6: return 'MNO';
+      case 7: return 'PQRS';
+      case 8: return 'TUV';
+      case 9: return 'WXYZ';
+      default: return '';
+    }
+  }
+
+  Widget _buildNumBtn(String digit, String sub) {
     return InkWell(
       onTap: () => _onKeyPressed(digit),
       borderRadius: BorderRadius.circular(40),
@@ -224,12 +285,22 @@ class _PinLockScreenState extends State<PinLockScreen> {
         alignment: Alignment.center,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: const Color(0xFF1E293B),
-          border: Border.all(color: const Color(0xFF334155)),
+          color: const Color(0xFF131B2E),
+          border: Border.all(color: const Color(0xFF1E293B), width: 1.2),
         ),
-        child: Text(
-          digit,
-          style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w600, color: Colors.white),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              digit,
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: Colors.white),
+            ),
+            if (sub.isNotEmpty)
+              Text(
+                sub,
+                style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w500, color: Color(0xFF64748B), letterSpacing: 1),
+              ),
+          ],
         ),
       ),
     );
