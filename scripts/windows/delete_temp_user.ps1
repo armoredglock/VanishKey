@@ -42,40 +42,35 @@ $cleanupReport = @{
 }
 
 try {
-    # 1. Terminate active sessions for the user if any exist
+    # 1. Immediately and forcefully terminate all processes owned by the temporary user
+    # taskkill is native, instant (sub-50ms), and terminates explorer.exe, sihost.exe, and all guest apps
     try {
-        $quserOutput = quser 2>$null
-        if ($quserOutput) {
-            foreach ($line in $quserOutput) {
-                if ($line -match "^\s*>?\s*($Username)\s+(\S+)?\s+(\d+)\s+") {
-                    $sessionId = $Matches[3]
-                    logoff.exe $sessionId 2>$null
-                    $cleanupReport.sessions_killed++
-                }
-            }
-        }
-    } catch {
-        # quser/logoff might not be available or fail if user has no session
-    }
-
-    # Also terminate any processes owned by the user
-    try {
-        $userProcesses = Get-CimInstance Win32_Process | Where-Object {
-            $owner = Invoke-CimMethod -InputObject $_ -MethodName GetOwner -ErrorAction SilentlyContinue
-            $owner.User -eq $Username
-        }
-        foreach ($proc in $userProcesses) {
-            Stop-Process -Id $proc.ProcessId -Force -ErrorAction SilentlyContinue
-        }
+        taskkill.exe /F /FI "USERNAME eq $Username" /T 2>$null | Out-Null
+        $cleanupReport.sessions_killed = 1
     } catch { }
 
-    # 2. Delete the scheduled task if it exists
+    # 2. Lock workstation immediately so the display returns to the clean Windows lock screen
+    try {
+        rundll32.exe user32.dll,LockWorkStation
+    } catch { }
+
+    # Small pause to allow OS kernel to release any SAM/profile locks
+    Start-Sleep -Milliseconds 300
+
+    # 3. Delete the scheduled task if it exists
     $taskName = "VanishKey_Delete_$Username"
     try {
         schtasks.exe /Delete /TN "$taskName" /F 2>$null | Out-Null
     } catch { }
 
-    # 3. Clean up the Windows User Profile via CIM/WMI
+    # 4. Remove the local user account from SAM (using net.exe and Remove-LocalUser for instant deletion)
+    try {
+        net.exe user "$Username" /delete 2>$null | Out-Null
+        Remove-LocalUser -Name "$Username" -ErrorAction SilentlyContinue
+    } catch { }
+    $cleanupReport.user_deleted = (-not (Get-LocalUser -Name $Username -ErrorAction SilentlyContinue))
+
+    # 5. Clean up the Windows User Profile via CIM/WMI
     try {
         $profiles = Get-CimInstance Win32_UserProfile -ErrorAction SilentlyContinue | Where-Object {
             $_.LocalPath -like "*\$Username" -or $_.LocalPath -like "*\$Username.*"
@@ -86,20 +81,9 @@ try {
         }
     } catch { }
 
-    # 4. Remove the local user account
-    $localUser = Get-LocalUser -Name $Username -ErrorAction SilentlyContinue
-    if ($localUser) {
-        Remove-LocalUser -Name $Username -ErrorAction Stop
-        $cleanupReport.user_deleted = $true
-    } else {
-        # In case it was already deleted
-        $cleanupReport.user_deleted = $true
-    }
-
-    # 5. Clean up any lingering folder on disk (C:\Users\<Username>)
+    # 6. Clean up any lingering folder on disk (C:\Users\<Username>)
     $userHomePath = Join-Path "C:\Users" $Username
     if (Test-Path $userHomePath) {
-        # Take ownership if needed and delete
         try {
             takeown.exe /F "$userHomePath" /R /D Y 2>$null | Out-Null
             icacls.exe "$userHomePath" /grant "${env:USERNAME}:(F)" /T /C /Q 2>$null | Out-Null

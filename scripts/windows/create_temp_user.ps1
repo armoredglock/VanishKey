@@ -40,8 +40,9 @@ if ($DurationMinutes -lt 1) {
 
 # CSPRNG helper function
 function New-SecureRandomPassword {
-    param([int]$Length = 24)
-    $chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*()-_=+"
+    param([int]$Length = 12)
+    # Clear, high-entropy alphanumeric set without confusing characters (no 0/O, 1/l/I)
+    $chars = "23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
     $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
     $bytes = New-Object byte[] $Length
     $rng.GetBytes($bytes)
@@ -57,8 +58,8 @@ if ([string]::IsNullOrWhiteSpace($Username)) {
     $Username = "VanishGuest"
 }
 
-# Generate CSPRNG password
-$plainPassword = New-SecureRandomPassword -Length 24
+# Generate CSPRNG password (12-char friendly alphanumeric)
+$plainPassword = New-SecureRandomPassword -Length 12
 $secPassword = ConvertTo-SecureString $plainPassword -AsPlainText -Force
 
 # Create the local user
@@ -114,20 +115,23 @@ $scriptDirectory = Split-Path -Parent $MyInvocation.MyCommand.Path
 $deleteScript = Join-Path $scriptDirectory "delete_temp_user.ps1"
 $taskName = "VanishKey_Delete_$Username"
 
-# Calculate task execution time in local time for schtasks.exe
+# Calculate task execution time in local system culture format
+$dateFormat = (Get-Culture).DateTimeFormat.ShortDatePattern
 $taskTime = (Get-Date).AddMinutes($DurationMinutes).ToString("HH:mm:ss")
-$taskDate = (Get-Date).AddMinutes($DurationMinutes).ToString("MM/dd/yyyy")
+$taskDate = (Get-Date).AddMinutes($DurationMinutes).ToString($dateFormat)
 
 $actionArg = "-NoProfile -ExecutionPolicy Bypass -File `"$deleteScript`" -Username `"$Username`""
 $action = "powershell.exe $actionArg"
 
-# Create one-time scheduled task running as SYSTEM
+# Create one-time scheduled task running with highest privileges
 $schtasksCmd = "schtasks.exe /Create /TN `"$taskName`" /TR `"$action`" /SC ONCE /ST $taskTime /SD $taskDate /RU SYSTEM /F /RL HIGHEST"
-Invoke-Expression $schtasksCmd | Out-Null
+try {
+    Invoke-Expression $schtasksCmd 2>$null | Out-Null
+} catch { }
 
-# In addition, start a background fallback watchdog process in case schtasks has a minute-boundary rounding delay
-$fallbackCommand = "Start-Sleep -Seconds $($DurationMinutes * 60); powershell.exe -NoProfile -ExecutionPolicy Bypass -File `"$deleteScript`" -Username `"$Username`""
-Start-Process powershell.exe -ArgumentList "-WindowStyle Hidden -Command `"$fallbackCommand`"" -WindowStyle Hidden
+# In addition, start a background fallback watchdog process
+$fallbackCommand = "Start-Sleep -Seconds $($DurationMinutes * 60); & '$deleteScript' -Username '$Username'"
+Start-Process powershell.exe -ArgumentList "-WindowStyle Hidden -NoProfile -ExecutionPolicy Bypass -Command `"$fallbackCommand`"" -WindowStyle Hidden
 
 # Output JSON result
 $result = @{

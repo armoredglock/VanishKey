@@ -1,25 +1,18 @@
 @echo off
 title VanishKey Desktop Host
 
-:: Check for Administrator elevation and self-elevate
-net session >nul 2>&1
+:: Verify Administrator privileges
+powershell -NoProfile -Command "([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)" | findstr "True" >nul
 if %errorlevel% neq 0 (
-    echo [i] Requesting Administrator privileges...
-    powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%~f0' -Verb RunAs"
+    echo ===================================================
+    echo   Elevating to Administrator Privileges...
+    echo ===================================================
+    echo Please click "Yes" on the Windows prompt!
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process powershell -Verb RunAs -ArgumentList '-NoProfile -ExecutionPolicy Bypass -NoExit -Command Set-Location ''%~dp0agent-cli''; $env:RELAY_URL=''https://vanishkey-relay.onrender.com''; node src/index.js'"
     exit /b
 )
 
 cd /d "%~dp0agent-cli"
-echo ===================================================
-echo     VanishKey Desktop Host (24/7 Cloud Mode)
-echo ===================================================
-echo [✔] Administrator privileges confirmed.
-echo [✔] Connecting to 24/7 Render Cloud Relay:
-echo     https://vanishkey-relay.onrender.com
-echo.
-echo Host Agent is active. Keep this window open in background.
-echo ===================================================
-echo.
 set RELAY_URL=https://vanishkey-relay.onrender.com
 node src/index.js
 pause

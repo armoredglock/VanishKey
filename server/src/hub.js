@@ -306,6 +306,23 @@ export class RelayHub {
         break;
       }
 
+      case 'TERMINATE_SESSION': {
+        const { deviceId, username } = msg;
+        const device = store.getDevice(deviceId);
+        if (!device || device.ownerId !== ownerId) return;
+
+        logger.info({ deviceId, ownerId, username }, 'Mobile requested immediate session termination');
+        const agentWs = this.agents.get(deviceId);
+        if (agentWs && agentWs.readyState === WebSocket.OPEN) {
+          agentWs.send(JSON.stringify({
+            type: 'TERMINATE_ACTIVE_SESSION',
+            username: username || 'VanishGuest',
+            ownerId
+          }));
+        }
+        break;
+      }
+
       case 'GET_DEVICES': {
         const devices = store.getDevicesForOwner(ownerId);
         // Enrich with real-time socket connectivity

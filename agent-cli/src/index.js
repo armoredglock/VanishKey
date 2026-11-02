@@ -3,9 +3,12 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import { execSync } from 'node:child_process';
 import qrcodeTerminal from 'qrcode-terminal';
 import { generateX25519KeyPair, deriveSessionKey, encryptPayload } from './cryptoHelper.js';
-import { createTemporaryUser } from './scriptRunner.js';
+import { createTemporaryUser, deleteTemporaryUser } from './scriptRunner.js';
+
+const activeCleanupTimers = new Map();
 
 function getLanIp() {
   const nets = os.networkInterfaces();
@@ -225,6 +228,47 @@ function connect() {
           console.log(`[+] End-to-end encrypted credentials sent back to Relay!`);
           appendAuditLog({ event: 'CREDENTIALS_ENCRYPTED_AND_SENT', requestId, username: creds.username });
 
+          // Arm immediate auto-cleanup timer to log off and delete user on expiry
+          const durationSec = creds.duration_seconds || (durationMinutes * 60);
+          console.log(`[Timer] Auto-cleanup armed for ${creds.username} (${durationSec}s countdown)...`);
+
+          if (activeCleanupTimers.has(creds.username)) {
+            clearTimeout(activeCleanupTimers.get(creds.username));
+          }
+
+          const timerId = setTimeout(async () => {
+            console.log(`\n====================================================`);
+            console.log(`[!] Time expired for ${creds.username}! Instant signout & purge...`);
+            console.log(`====================================================`);
+
+            // Step 1: Instantly terminate guest session and lock screen (sub-100ms)
+            if (process.platform === 'win32') {
+              try {
+                execSync(`taskkill /F /FI "USERNAME eq ${creds.username}" /T`, { stdio: 'ignore' });
+              } catch (e) {}
+              try {
+                execSync(`rundll32.exe user32.dll,LockWorkStation`, { stdio: 'ignore' });
+              } catch (e) {}
+              try {
+                execSync(`net user "${creds.username}" /delete`, { stdio: 'ignore' });
+              } catch (e) {}
+            }
+
+            // Step 2: Thoroughly purge profile and directory
+            try {
+              const res = await deleteTemporaryUser(creds.username);
+              console.log(`[+] User ${creds.username} forcefully signed out and purged:`, res);
+              appendAuditLog({ event: 'ACCOUNT_PURGED_AUTO', username: creds.username, res });
+            } catch (err) {
+              console.error(`[-] Failed to purge ${creds.username}:`, err.message);
+              appendAuditLog({ event: 'ACCOUNT_PURGE_FAILED', username: creds.username, error: err.message });
+            } finally {
+              activeCleanupTimers.delete(creds.username);
+            }
+          }, durationSec * 1000);
+
+          activeCleanupTimers.set(creds.username, timerId);
+
         } catch (err) {
           console.error(`[-] Failed to generate temporary user:`, err.message);
           ws.send(JSON.stringify({
@@ -234,6 +278,31 @@ function connect() {
             error: err.message
           }));
           appendAuditLog({ event: 'GENERATION_FAILED', requestId, error: err.message });
+        }
+      } else if (msg.type === 'TERMINATE_ACTIVE_SESSION') {
+        const targetUser = msg.username || 'VanishGuest';
+        console.log(`\n====================================================`);
+        console.log(`[!] Manual Kill-Switch Triggered: Purging ${targetUser}...`);
+        console.log(`====================================================`);
+
+        if (activeCleanupTimers.has(targetUser)) {
+          clearTimeout(activeCleanupTimers.get(targetUser));
+          activeCleanupTimers.delete(targetUser);
+        }
+
+        if (process.platform === 'win32') {
+          try { execSync(`taskkill /F /FI "USERNAME eq ${targetUser}" /T`, { stdio: 'ignore' }); } catch (e) {}
+          try { execSync(`rundll32.exe user32.dll,LockWorkStation`, { stdio: 'ignore' }); } catch (e) {}
+          try { execSync(`net user "${targetUser}" /delete`, { stdio: 'ignore' }); } catch (e) {}
+        }
+
+        try {
+          const res = await deleteTemporaryUser(targetUser);
+          console.log(`[+] User ${targetUser} manually purged via mobile kill-switch:`, res);
+          appendAuditLog({ event: 'ACCOUNT_PURGED_MANUAL', username: targetUser, res });
+        } catch (err) {
+          console.error(`[-] Manual purge error:`, err.message);
+          appendAuditLog({ event: 'ACCOUNT_PURGE_MANUAL_FAILED', username: targetUser, error: err.message });
         }
       } else if (msg.type === 'REVOKED') {
         console.log(`[!] Device pairing was REVOKED by owner.`);

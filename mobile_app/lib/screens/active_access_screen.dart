@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../models/credential.dart';
 import '../models/device.dart';
+import '../services/relay_service.dart';
 
 class ActiveAccessScreen extends StatefulWidget {
   final EphemeralCredential credential;
@@ -62,6 +64,56 @@ Note: Standard user permissions only. This account and its files will self-destr
     Clipboard.setData(ClipboardData(text: message));
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Login message copied! Paste it to your roommate.')),
+    );
+  }
+
+  void _handleEmergencyTerminate() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.redAccent),
+            SizedBox(width: 8),
+            Text('End Session Now?', style: TextStyle(color: Colors.white, fontSize: 18)),
+          ],
+        ),
+        content: const Text(
+          'This will immediately lock your laptop, terminate all guest processes, and permanently delete the temporary account from Windows.',
+          style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white60)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.read<RelayService>().terminateSession(
+                deviceId: widget.device.deviceId,
+                username: widget.credential.username,
+              );
+              _timer.cancel();
+              setState(() {
+                _remainingSeconds = 0;
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  backgroundColor: Color(0xFF991B1B),
+                  content: Text('Kill signal sent. Account forcefully wiped on laptop.'),
+                ),
+              );
+            },
+            child: const Text('Kill Session & Wipe', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
     );
   }
 
@@ -182,7 +234,8 @@ Note: Standard user permissions only. This account and its files will self-destr
 
               // Username Display
               _buildCredentialCard(
-                label: 'TEMPORARY USERNAME',
+                label: 'GUEST ACCOUNT USERNAME',
+                badge: 'Local User',
                 value: widget.credential.username,
                 onCopy: () => _copyToClipboard(widget.credential.username, 'Username'),
               ),
@@ -190,14 +243,15 @@ Note: Standard user permissions only. This account and its files will self-destr
 
               // Password Display
               _buildCredentialCard(
-                label: 'CSPRNG PASSWORD (ONE-TIME VIEW)',
+                label: 'TEMPORARY PASSCODE',
+                badge: '12-char CSPRNG',
                 value: widget.credential.password,
                 isPassword: true,
                 obscure: _obscurePassword,
                 onToggleObscure: () => setState(() => _obscurePassword = !_obscurePassword),
-                onCopy: () => _copyToClipboard(widget.credential.password, 'Password'),
+                onCopy: () => _copyToClipboard(widget.credential.password, 'Passcode'),
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 24),
 
               // Share with Roommate Action Button
               SizedBox(
@@ -205,15 +259,35 @@ Note: Standard user permissions only. This account and its files will self-destr
                 child: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF0284C7),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    padding: const EdgeInsets.symmetric(vertical: 15),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  icon: const Icon(Icons.share, color: Colors.white),
+                  icon: const Icon(Icons.share_outlined, color: Colors.white, size: 20),
                   label: const Text(
                     'Copy Full Login Details for Roommate',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                   onPressed: _shareWithRoommate,
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Emergency Kill-Switch Button
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.redAccent,
+                    side: const BorderSide(color: Color(0xFFEF4444), width: 1.2),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  icon: const Icon(Icons.power_settings_new_rounded, color: Colors.redAccent, size: 20),
+                  label: const Text(
+                    'End Session & Wipe Account Now',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.redAccent),
+                  ),
+                  onPressed: _handleEmergencyTerminate,
                 ),
               ),
             ],
@@ -225,6 +299,7 @@ Note: Standard user permissions only. This account and its files will self-destr
 
   Widget _buildCredentialCard({
     required String label,
+    required String badge,
     required String value,
     bool isPassword = false,
     bool obscure = false,
@@ -232,37 +307,60 @@ Note: Standard user permissions only. This account and its files will self-destr
     required VoidCallback onCopy,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: const Color(0xFF1E293B),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: const Color(0xFF334155)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8))),
-          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8), letterSpacing: 0.5),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0F172A),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: const Color(0xFF334155)),
+                ),
+                child: Text(
+                  badge,
+                  style: const TextStyle(fontSize: 10, color: Color(0xFF38BDF8), fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
           Row(
             children: [
               Expanded(
                 child: Text(
-                  obscure ? '•' * value.length : value,
+                  obscure ? '••••••••••••' : value,
                   style: const TextStyle(
                     fontFamily: 'monospace',
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.5,
                     color: Color(0xFF38BDF8),
                   ),
                 ),
               ),
               if (isPassword)
                 IconButton(
-                  icon: Icon(obscure ? Icons.visibility_off : Icons.visibility, color: Colors.white70),
+                  tooltip: obscure ? 'Show password' : 'Hide password',
+                  icon: Icon(obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined, color: Colors.white70, size: 20),
                   onPressed: onToggleObscure,
                 ),
               IconButton(
-                icon: const Icon(Icons.copy, color: Colors.white70),
+                tooltip: 'Copy to clipboard',
+                icon: const Icon(Icons.copy_rounded, color: Colors.white70, size: 20),
                 onPressed: onCopy,
               ),
             ],

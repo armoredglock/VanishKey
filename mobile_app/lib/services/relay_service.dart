@@ -248,6 +248,17 @@ class RelayService extends ChangeNotifier {
     }
   }
 
+  /// Instantly terminate an active session on the laptop
+  void terminateSession({required String deviceId, required String username}) {
+    if (_channel != null && isConnected) {
+      _channel!.sink.add(jsonEncode({
+        'type': 'TERMINATE_SESSION',
+        'deviceId': deviceId,
+        'username': username,
+      }));
+    }
+  }
+
   @override
   void dispose() {
     _channel?.sink.close();

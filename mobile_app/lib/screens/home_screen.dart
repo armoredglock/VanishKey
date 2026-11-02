@@ -29,45 +29,70 @@ class HomeScreen extends StatelessWidget {
       return;
     }
 
-    // 2. Select Duration
+    // 2. Select Duration with High-Craft Bottom Sheet
     int durationMinutes = 3;
     final selectedDuration = await showModalBottomSheet<int>(
       context: context,
-      backgroundColor: const Color(0xFF1E293B),
+      backgroundColor: const Color(0xFF0F172A),
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) {
         return Padding(
-          padding: const EdgeInsets.all(24.0),
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF334155),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              const Row(
+                children: [
+                  Icon(Icons.timer_outlined, color: Color(0xFF38BDF8), size: 22),
+                  SizedBox(width: 8),
+                  Text(
+                    'Select Access Duration',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
               const Text(
-                'Select Access Duration',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                'Windows will automatically sign out and wipe the user profile when time runs out.',
+                style: TextStyle(fontSize: 13, color: Color(0xFF94A3B8), height: 1.3),
               ),
-              const SizedBox(height: 8),
-              const Text(
-                'Account and home folder are automatically destroyed upon expiry.',
-                style: TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
+              const SizedBox(height: 20),
+              _buildDurationOption(
+                ctx,
+                minutes: 2,
+                title: '2 Minutes',
+                subtitle: 'Quick task (e.g. print a document, check an email)',
+                isRecommended: false,
               ),
-              const SizedBox(height: 16),
-              ListTile(
-                leading: const Icon(Icons.timer, color: Color(0xFF38BDF8)),
-                title: const Text('2 Minutes', style: TextStyle(color: Colors.white)),
-                onTap: () => Navigator.pop(ctx, 2),
+              const SizedBox(height: 10),
+              _buildDurationOption(
+                ctx,
+                minutes: 3,
+                title: '3 Minutes',
+                subtitle: 'Recommended duration for casual roommate access',
+                isRecommended: true,
               ),
-              ListTile(
-                leading: const Icon(Icons.timer, color: Color(0xFF38BDF8)),
-                title: const Text('3 Minutes (Recommended)', style: TextStyle(color: Colors.white)),
-                onTap: () => Navigator.pop(ctx, 3),
-              ),
-              ListTile(
-                leading: const Icon(Icons.timer, color: Color(0xFF38BDF8)),
-                title: const Text('5 Minutes (Hard Cap)', style: TextStyle(color: Colors.white)),
-                onTap: () => Navigator.pop(ctx, 5),
+              const SizedBox(height: 10),
+              _buildDurationOption(
+                ctx,
+                minutes: 5,
+                title: '5 Minutes',
+                subtitle: 'Maximum security hard cap',
+                isRecommended: false,
               ),
             ],
           ),
@@ -125,22 +150,174 @@ class HomeScreen extends StatelessWidget {
     } catch (e) {
       if (context.mounted) {
         Navigator.pop(context); // Close loading dialog
-        showDialog(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            backgroundColor: const Color(0xFF1E293B),
-            title: const Text('Generation Failed', style: TextStyle(color: Colors.redAccent)),
-            content: Text(e.toString().replaceAll('Exception: ', ''), style: const TextStyle(color: Colors.white70)),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('OK', style: TextStyle(color: Color(0xFF38BDF8))),
-              )
-            ],
-          ),
-        );
+        _showHumanFriendlyError(context, e.toString());
       }
     }
+  }
+
+  static Widget _buildDurationOption(
+    BuildContext ctx, {
+    required int minutes,
+    required String title,
+    required String subtitle,
+    required bool isRecommended,
+  }) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(14),
+      onTap: () => Navigator.pop(ctx, minutes),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E293B),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isRecommended ? const Color(0xFF0284C7) : const Color(0xFF334155),
+            width: isRecommended ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: isRecommended ? const Color(0xFF0C4A6E) : const Color(0xFF0F172A),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                Icons.timer_outlined,
+                color: isRecommended ? const Color(0xFF38BDF8) : Colors.white60,
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
+                      if (isRecommended) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0284C7).withOpacity(0.3),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            'RECOMMENDED',
+                            style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF38BDF8)),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: Colors.white38, size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showHumanFriendlyError(BuildContext context, String rawError) {
+    String title = 'Generation Failed';
+    String description = 'Something went wrong while communicating with your laptop.';
+    String actionHint = 'Please check that the host agent is active on your laptop.';
+    IconData icon = Icons.error_outline_rounded;
+    Color iconColor = Colors.redAccent;
+
+    final lower = rawError.toLowerCase();
+    if (lower.contains('administrative privileges') || lower.contains('admin')) {
+      title = 'Administrator Rights Needed';
+      description = 'Windows requires administrator privileges to create the temporary local user.';
+      actionHint = 'On your laptop, right-click "Launch-VanishKey-Host.bat" and choose "Run as administrator".';
+      icon = Icons.admin_panel_settings_outlined;
+      iconColor = Colors.amberAccent;
+    } else if (lower.contains('timed out') || lower.contains('timeout') || lower.contains('not respond')) {
+      title = 'Laptop Did Not Respond';
+      description = 'Your laptop appears to be asleep, locked without host running, or disconnected.';
+      actionHint = 'Open the "VanishKey Host" terminal on your laptop to resume connection.';
+      icon = Icons.laptop_chromebook_rounded;
+      iconColor = const Color(0xFF38BDF8);
+    } else if (lower.contains('rate limit')) {
+      title = 'Hourly Quota Reached';
+      description = 'To protect your system, VanishKey caps temporary accesses at 3 per hour.';
+      actionHint = 'Please wait a short while before generating new access.';
+      icon = Icons.hourglass_top_rounded;
+      iconColor = Colors.orangeAccent;
+    } else if (lower.contains('socketexception') || lower.contains('connection refused')) {
+      title = 'Network Connection Error';
+      description = 'Unable to reach the VanishKey Relay Server.';
+      actionHint = 'Check your internet connection or verify the Render cloud service status.';
+      icon = Icons.wifi_off_rounded;
+    }
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(icon, color: iconColor, size: 26),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(description, style: const TextStyle(fontSize: 13, color: Colors.white, height: 1.4)),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0F172A),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFF334155)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.lightbulb_outline, size: 16, color: Color(0xFF38BDF8)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      actionHint,
+                      style: const TextStyle(fontSize: 12, color: Color(0xFFE2E8F0), height: 1.3),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Understood', style: TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
   }
 
   void _confirmRevoke(BuildContext context, PairedDevice device) {
@@ -349,39 +526,70 @@ class HomeScreen extends StatelessWidget {
       ),
       body: relay.pairedDevices.isEmpty
           ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.laptop_mac_outlined, size: 80, color: Color(0xFF475569)),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'No Paired Laptops',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Scan the QR code displayed on the VanishKey\nDesktop Agent running on your laptop.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 14, color: Color(0xFF94A3B8)),
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0284C7),
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0C4A6E).withOpacity(0.3),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: const Color(0xFF0284C7).withOpacity(0.5), width: 1.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF0284C7).withOpacity(0.15),
+                            blurRadius: 24,
+                            spreadRadius: 4,
+                          ),
+                        ],
+                      ),
+                      child: const Center(
+                        child: Icon(Icons.laptop_windows_rounded, size: 48, color: Color(0xFF38BDF8)),
+                      ),
                     ),
-                    icon: const Icon(Icons.qr_code_scanner, color: Colors.white),
-                    label: const Text('Scan Desktop QR Code', style: TextStyle(fontSize: 16, color: Colors.white)),
-                    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const QrScanScreen())),
-                  ),
-                  const SizedBox(height: 12),
-                  TextButton.icon(
-                    icon: const Icon(Icons.keyboard_alt_outlined, color: Color(0xFF38BDF8)),
-                    label: const Text('Or Enter Pairing PIN Manually', style: TextStyle(color: Color(0xFF38BDF8), fontSize: 14)),
-                    onPressed: () => _showManualPair(context),
-                  ),
-                ],
+                    const SizedBox(height: 24),
+                    const Text(
+                      'No Laptop Paired Yet',
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 0.3),
+                    ),
+                    const SizedBox(height: 10),
+                    const Text(
+                      'Run VanishKey Host on your computer to display a pairing QR code, then scan it below to connect.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 14, color: Color(0xFF94A3B8), height: 1.4),
+                    ),
+                    const SizedBox(height: 32),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF0284C7),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          elevation: 3,
+                        ),
+                        icon: const Icon(Icons.qr_code_scanner_rounded, color: Colors.white, size: 22),
+                        label: const Text(
+                          'Scan Desktop QR Code',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const QrScanScreen())),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    TextButton.icon(
+                      icon: const Icon(Icons.keyboard_alt_outlined, color: Color(0xFF38BDF8), size: 18),
+                      label: const Text(
+                        'Enter 6-Digit PIN Manually',
+                        style: TextStyle(color: Color(0xFF38BDF8), fontSize: 14, fontWeight: FontWeight.w500),
+                      ),
+                      onPressed: () => _showManualPair(context),
+                    ),
+                  ],
+                ),
               ),
             )
           : RefreshIndicator(
