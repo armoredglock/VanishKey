@@ -1,4 +1,6 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../services/relay_service.dart';
 import '../services/auth_service.dart';
@@ -30,72 +32,149 @@ class HomeScreen extends StatelessWidget {
     }
 
     // 2. Select Duration with High-Craft Bottom Sheet
-    int durationMinutes = 3;
+    int durationMinutes = 15;
     final selectedDuration = await showModalBottomSheet<int>(
       context: context,
+      isScrollControlled: true,
       backgroundColor: const Color(0xFF0F172A),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF334155),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 18),
-              const Row(
+        return StatefulBuilder(
+          builder: (bottomCtx, setModalState) {
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.timer_outlined, color: Color(0xFF38BDF8), size: 22),
-                  SizedBox(width: 8),
-                  Text(
-                    'Select Access Duration',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF334155),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0C4A6E).withOpacity(0.4),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.timer_outlined, color: Color(0xFF38BDF8), size: 20),
+                      ),
+                      const SizedBox(width: 10),
+                      const Text(
+                        'Select Access Duration',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'When time runs out, Windows will automatically log off the guest and return to your primary lock screen.',
+                    style: TextStyle(fontSize: 13, color: Color(0xFF94A3B8), height: 1.3),
+                  ),
+                  const SizedBox(height: 18),
+                  _buildDurationOption(
+                    bottomCtx,
+                    minutes: 5,
+                    title: '5 Minutes',
+                    subtitle: 'Quick task (e.g. print a document or send a file)',
+                    isRecommended: false,
+                  ),
+                  const SizedBox(height: 10),
+                  _buildDurationOption(
+                    bottomCtx,
+                    minutes: 15,
+                    title: '15 Minutes',
+                    subtitle: 'Recommended duration for casual guest access',
+                    isRecommended: true,
+                  ),
+                  const SizedBox(height: 10),
+                  _buildDurationOption(
+                    bottomCtx,
+                    minutes: 30,
+                    title: '30 Minutes',
+                    subtitle: 'Work or study session / presentation',
+                    isRecommended: false,
+                  ),
+                  const SizedBox(height: 10),
+                  _buildDurationOption(
+                    bottomCtx,
+                    minutes: 60,
+                    title: '1 Hour',
+                    subtitle: 'Extended temporary guest access',
+                    isRecommended: false,
+                  ),
+                  const SizedBox(height: 12),
+                  // Custom Time Limit Option
+                  InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: () async {
+                      HapticFeedback.lightImpact();
+                      final customMinutes = await _showCustomDurationDialog(context);
+                      if (customMinutes != null && context.mounted) {
+                        Navigator.pop(bottomCtx, customMinutes);
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF131B2E),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFF38BDF8).withOpacity(0.4), width: 1.2),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF38BDF8).withOpacity(0.08),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF38BDF8).withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(Icons.tune_rounded, color: Color(0xFF38BDF8), size: 20),
+                          ),
+                          const SizedBox(width: 14),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Custom Duration...',
+                                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
+                                ),
+                                SizedBox(height: 2),
+                                Text(
+                                  'Set any custom limit in minutes (1m to 24h)',
+                                  style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(Icons.arrow_forward_ios_rounded, color: Color(0xFF38BDF8), size: 16),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
-              const Text(
-                'Windows will automatically sign out and wipe the user profile when time runs out.',
-                style: TextStyle(fontSize: 13, color: Color(0xFF94A3B8), height: 1.3),
-              ),
-              const SizedBox(height: 20),
-              _buildDurationOption(
-                ctx,
-                minutes: 2,
-                title: '2 Minutes',
-                subtitle: 'Quick task (e.g. print a document, check an email)',
-                isRecommended: false,
-              ),
-              const SizedBox(height: 10),
-              _buildDurationOption(
-                ctx,
-                minutes: 3,
-                title: '3 Minutes',
-                subtitle: 'Recommended duration for casual roommate access',
-                isRecommended: true,
-              ),
-              const SizedBox(height: 10),
-              _buildDurationOption(
-                ctx,
-                minutes: 5,
-                title: '5 Minutes',
-                subtitle: 'Maximum security hard cap',
-                isRecommended: false,
-              ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
@@ -155,6 +234,280 @@ class HomeScreen extends StatelessWidget {
     }
   }
 
+  static Future<int?> _showCustomDurationDialog(BuildContext context) async {
+    int currentMinutes = 20;
+    final controller = TextEditingController(text: currentMinutes.toString());
+
+    return showModalBottomSheet<int>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF0F172A),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (dlgCtx) {
+        return StatefulBuilder(
+          builder: (modalCtx, setDlgState) {
+            final hours = currentMinutes ~/ 60;
+            final mins = currentMinutes % 60;
+            String durationLabel = '';
+            if (hours > 0 && mins > 0) {
+              durationLabel = '$hours hr $mins min';
+            } else if (hours > 0) {
+              durationLabel = '$hours hr';
+            } else {
+              durationLabel = '$mins min';
+            }
+
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 24,
+                right: 24,
+                top: 20,
+                bottom: MediaQuery.of(dlgCtx).viewInsets.bottom + 28,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF334155),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  const Text(
+                    'Custom Time Limit',
+                    style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Specify exactly how long the guest session should remain active.',
+                    style: TextStyle(fontSize: 13, color: Color(0xFF94A3B8)),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  // Display Counter Card
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 28),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF131B2E),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: const Color(0xFF1E293B)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 16,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
+                          children: [
+                            Text(
+                              '$currentMinutes',
+                              style: const TextStyle(
+                                fontSize: 44,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF38BDF8),
+                                fontFeatures: [FontFeature.tabularFigures()],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Text(
+                              'Minutes',
+                              style: TextStyle(fontSize: 18, color: Colors.white70, fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '($durationLabel)',
+                          style: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8), fontWeight: FontWeight.w500),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  // Stepper Adjustment Buttons
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _buildStepChip('-15m', () {
+                          HapticFeedback.lightImpact();
+                          setDlgState(() {
+                            currentMinutes = (currentMinutes - 15).clamp(1, 1440);
+                            controller.text = currentMinutes.toString();
+                          });
+                        }),
+                        const SizedBox(width: 8),
+                        _buildStepChip('-5m', () {
+                          HapticFeedback.lightImpact();
+                          setDlgState(() {
+                            currentMinutes = (currentMinutes - 5).clamp(1, 1440);
+                            controller.text = currentMinutes.toString();
+                          });
+                        }),
+                        const SizedBox(width: 8),
+                        _buildStepChip('-1m', () {
+                          HapticFeedback.lightImpact();
+                          setDlgState(() {
+                            currentMinutes = (currentMinutes - 1).clamp(1, 1440);
+                            controller.text = currentMinutes.toString();
+                          });
+                        }),
+                        const SizedBox(width: 8),
+                        _buildStepChip('+1m', () {
+                          HapticFeedback.lightImpact();
+                          setDlgState(() {
+                            currentMinutes = (currentMinutes + 1).clamp(1, 1440);
+                            controller.text = currentMinutes.toString();
+                          });
+                        }),
+                        const SizedBox(width: 8),
+                        _buildStepChip('+5m', () {
+                          HapticFeedback.lightImpact();
+                          setDlgState(() {
+                            currentMinutes = (currentMinutes + 5).clamp(1, 1440);
+                            controller.text = currentMinutes.toString();
+                          });
+                        }),
+                        const SizedBox(width: 8),
+                        _buildStepChip('+15m', () {
+                          HapticFeedback.lightImpact();
+                          setDlgState(() {
+                            currentMinutes = (currentMinutes + 15).clamp(1, 1440);
+                            controller.text = currentMinutes.toString();
+                          });
+                        }),
+                        const SizedBox(width: 8),
+                        _buildStepChip('+30m', () {
+                          HapticFeedback.lightImpact();
+                          setDlgState(() {
+                            currentMinutes = (currentMinutes + 30).clamp(1, 1440);
+                            controller.text = currentMinutes.toString();
+                          });
+                        }),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  // Direct Input Field
+                  TextField(
+                    controller: controller,
+                    keyboardType: TextInputType.number,
+                    style: const TextStyle(color: Colors.white, fontFeatures: [FontFeature.tabularFigures()]),
+                    decoration: InputDecoration(
+                      labelText: 'Or enter custom minutes directly',
+                      labelStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 13),
+                      prefixIcon: const Icon(Icons.edit_outlined, color: Color(0xFF38BDF8), size: 20),
+                      filled: true,
+                      fillColor: const Color(0xFF131B2E),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: Color(0xFF1E293B)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: Color(0xFF1E293B)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: Color(0xFF38BDF8)),
+                      ),
+                    ),
+                    onChanged: (val) {
+                      final parsed = int.tryParse(val);
+                      if (parsed != null && parsed >= 1 && parsed <= 1440) {
+                        setDlgState(() {
+                          currentMinutes = parsed;
+                        });
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                  // Action Buttons
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white70,
+                            side: const BorderSide(color: Color(0xFF334155)),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          onPressed: () => Navigator.pop(dlgCtx),
+                          child: const Text('Cancel'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 2,
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF0284C7),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            elevation: 2,
+                          ),
+                          icon: const Icon(Icons.check_rounded, size: 20),
+                          label: Text(
+                            'Grant $durationLabel',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          onPressed: () {
+                            HapticFeedback.mediumImpact();
+                            Navigator.pop(dlgCtx, currentMinutes);
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  static Widget _buildStepChip(String label, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E293B),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFF334155)),
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: Color(0xFF38BDF8),
+            fontFeatures: [FontFeature.tabularFigures()],
+          ),
+        ),
+      ),
+    );
+  }
+
   static Widget _buildDurationOption(
     BuildContext ctx, {
     required int minutes,
@@ -163,17 +516,29 @@ class HomeScreen extends StatelessWidget {
     required bool isRecommended,
   }) {
     return InkWell(
-      borderRadius: BorderRadius.circular(14),
-      onTap: () => Navigator.pop(ctx, minutes),
+      borderRadius: BorderRadius.circular(16),
+      onTap: () {
+        HapticFeedback.lightImpact();
+        Navigator.pop(ctx, minutes);
+      },
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: const Color(0xFF1E293B),
-          borderRadius: BorderRadius.circular(14),
+          color: const Color(0xFF131B2E),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isRecommended ? const Color(0xFF0284C7) : const Color(0xFF334155),
+            color: isRecommended ? const Color(0xFF0284C7) : const Color(0xFF1E293B),
             width: isRecommended ? 1.5 : 1,
           ),
+          boxShadow: isRecommended
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFF0284C7).withOpacity(0.12),
+                    blurRadius: 12,
+                    offset: const Offset(0, 3),
+                  ),
+                ]
+              : null,
         ),
         child: Row(
           children: [
@@ -198,7 +563,12 @@ class HomeScreen extends StatelessWidget {
                     children: [
                       Text(
                         title,
-                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          fontFeatures: [FontFeature.tabularFigures()],
+                        ),
                       ),
                       if (isRecommended) ...[
                         const SizedBox(width: 8),
@@ -248,75 +618,104 @@ class HomeScreen extends StatelessWidget {
     } else if (lower.contains('timed out') || lower.contains('timeout') || lower.contains('not respond')) {
       title = 'Laptop Did Not Respond';
       description = 'Your laptop appears to be asleep, locked without host running, or disconnected.';
-      actionHint = 'Open the "VanishKey Host" terminal on your laptop to resume connection.';
-      icon = Icons.laptop_chromebook_rounded;
-      iconColor = const Color(0xFF38BDF8);
-    } else if (lower.contains('rate limit')) {
-      title = 'Hourly Quota Reached';
-      description = 'To protect your system, VanishKey caps temporary accesses at 3 per hour.';
-      actionHint = 'Please wait a short while before generating new access.';
-      icon = Icons.hourglass_top_rounded;
-      iconColor = Colors.orangeAccent;
-    } else if (lower.contains('socketexception') || lower.contains('connection refused')) {
-      title = 'Network Connection Error';
-      description = 'Unable to reach the VanishKey Relay Server.';
-      actionHint = 'Check your internet connection or verify the Render cloud service status.';
+      actionHint = 'Make sure the laptop is awake and the VanishKey Host window is open.';
       icon = Icons.wifi_off_rounded;
+      iconColor = Colors.orangeAccent;
+    } else if (lower.contains('not paired') || lower.contains('not found')) {
+      title = 'Laptop Not Connected';
+      description = 'The relay server could not find your laptop.';
+      actionHint = 'Run "Launch-VanishKey-Host.bat" on your laptop and re-pair using the QR scanner.';
+      icon = Icons.devices_other_rounded;
+      iconColor = Colors.blueAccent;
     }
 
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E293B),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Icon(icon, color: iconColor, size: 26),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Colors.white),
+      backgroundColor: const Color(0xFF0F172A),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF334155),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
               ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(description, style: const TextStyle(fontSize: 13, color: Colors.white, height: 1.4)),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFF0F172A),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFF334155)),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              const SizedBox(height: 20),
+              Row(
                 children: [
-                  const Icon(Icons.lightbulb_outline, size: 16, color: Color(0xFF38BDF8)),
-                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: iconColor.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(icon, color: iconColor, size: 26),
+                  ),
+                  const SizedBox(width: 14),
                   Expanded(
                     child: Text(
-                      actionHint,
-                      style: const TextStyle(fontSize: 12, color: Color(0xFFE2E8F0), height: 1.3),
+                      title,
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
                     ),
                   ),
                 ],
               ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Understood', style: TextStyle(color: Color(0xFF38BDF8), fontWeight: FontWeight.bold)),
+              const SizedBox(height: 14),
+              Text(
+                description,
+                style: const TextStyle(fontSize: 14, color: Colors.white70, height: 1.4),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF131B2E),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFF1E293B)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.lightbulb_outline, color: Color(0xFF38BDF8), size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        actionHint,
+                        style: const TextStyle(fontSize: 13, color: Color(0xFF94A3B8), height: 1.4),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0284C7),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Got it', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -325,10 +724,10 @@ class HomeScreen extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1E293B),
-        title: Text('Revoke ${device.deviceName}?', style: const TextStyle(color: Colors.white)),
-        content: const Text(
-          'This will permanently disconnect this laptop. You will need to scan a new QR code to reconnect.',
-          style: TextStyle(color: Colors.white70),
+        title: const Text('Revoke Laptop Pairing?', style: TextStyle(color: Colors.white)),
+        content: Text(
+          'This will permanently disconnect ${device.deviceName}. You will need to scan a new QR code to reconnect.',
+          style: const TextStyle(color: Colors.white70),
         ),
         actions: [
           TextButton(
@@ -341,7 +740,7 @@ class HomeScreen extends StatelessWidget {
               Navigator.pop(ctx);
               context.read<RelayService>().revokeDevice(device.deviceId);
             },
-            child: const Text('Revoke Device', style: TextStyle(color: Colors.white)),
+            child: const Text('Revoke', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -349,73 +748,38 @@ class HomeScreen extends StatelessWidget {
   }
 
   void _showManualPair(BuildContext context) {
-    final relay = context.read<RelayService>();
-    final urlController = TextEditingController(text: relay.relayBaseUrl);
-    final idController = TextEditingController();
-    final pinController = TextEditingController();
+    final devIdCtrl = TextEditingController();
+    final pinCtrl = TextEditingController();
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF1E293B),
-        title: const Row(
+        title: const Text('Manual Pair by PIN', style: TextStyle(color: Colors.white)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.keyboard_alt_outlined, color: Color(0xFF38BDF8)),
-            SizedBox(width: 8),
-            Text('Manual Pairing', style: TextStyle(color: Colors.white, fontSize: 18)),
+            TextField(
+              controller: devIdCtrl,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                labelText: 'Device ID (e.g. dev_win32_1677AA)',
+                labelStyle: TextStyle(color: Colors.white60),
+                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: pinCtrl,
+              keyboardType: TextInputType.number,
+              style: const TextStyle(color: Colors.white, letterSpacing: 4),
+              decoration: const InputDecoration(
+                labelText: '6-Digit Pairing PIN',
+                labelStyle: TextStyle(color: Colors.white60),
+                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+              ),
+            ),
           ],
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Enter the pairing info shown on your laptop screen:', style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
-              const SizedBox(height: 16),
-              const Text('Relay Server Address / IP:', style: TextStyle(color: Colors.white70, fontSize: 12)),
-              const SizedBox(height: 6),
-              TextField(
-                controller: urlController,
-                style: const TextStyle(color: Colors.white, fontFamily: 'monospace'),
-                decoration: InputDecoration(
-                  hintText: 'http://192.168.1.X:8080',
-                  hintStyle: const TextStyle(color: Colors.white30),
-                  filled: true,
-                  fillColor: const Color(0xFF0F172A),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-              ),
-              const SizedBox(height: 12),
-              const Text('Device ID (e.g. dev_win32_1677AA):', style: TextStyle(color: Colors.white70, fontSize: 12)),
-              const SizedBox(height: 6),
-              TextField(
-                controller: idController,
-                style: const TextStyle(color: Colors.white, fontFamily: 'monospace'),
-                decoration: InputDecoration(
-                  hintText: 'dev_win32_XXXXXX',
-                  hintStyle: const TextStyle(color: Colors.white30),
-                  filled: true,
-                  fillColor: const Color(0xFF0F172A),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-              ),
-              const SizedBox(height: 12),
-              const Text('6-Digit Pairing PIN:', style: TextStyle(color: Colors.white70, fontSize: 12)),
-              const SizedBox(height: 6),
-              TextField(
-                controller: pinController,
-                keyboardType: TextInputType.number,
-                style: const TextStyle(color: Colors.white, fontFamily: 'monospace', letterSpacing: 2),
-                decoration: InputDecoration(
-                  hintText: '123456',
-                  hintStyle: const TextStyle(color: Colors.white30),
-                  filled: true,
-                  fillColor: const Color(0xFF0F172A),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-              ),
-            ],
-          ),
         ),
         actions: [
           TextButton(
@@ -425,28 +789,14 @@ class HomeScreen extends StatelessWidget {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0284C7)),
             onPressed: () async {
-              final devId = idController.text.trim();
-              final pin = pinController.text.trim();
-              final url = urlController.text.trim();
-
-              if (devId.isEmpty || pin.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Please fill in both Device ID and PIN.')),
-                );
-                return;
-              }
-
-              if (url.isNotEmpty) {
-                relay.updateRelayUrl(url);
-              }
-
+              final devId = devIdCtrl.text.trim();
+              final pin = pinCtrl.text.trim();
+              if (devId.isEmpty || pin.isEmpty) return;
               Navigator.pop(ctx);
-
               try {
-                await relay.pairDevice(
+                await context.read<RelayService>().pairDevice(
                   deviceId: devId,
                   pairingSecret: pin,
-                  devicePublicKey: '',
                   customName: 'Laptop ($devId)',
                 );
                 if (context.mounted) {
@@ -474,9 +824,9 @@ class HomeScreen extends StatelessWidget {
     final relay = context.watch<RelayService>();
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: const Color(0xFF0A0E1A),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1E293B),
+        backgroundColor: const Color(0xFF131B2E),
         elevation: 0,
         title: Row(
           children: [
@@ -608,15 +958,15 @@ class HomeScreen extends StatelessWidget {
                         color: dev.isOnline ? const Color(0xFF0284C7) : const Color(0xFF1E293B),
                         width: dev.isOnline ? 1.5 : 1.2,
                       ),
-                      boxShadow: dev.isOnline
-                          ? [
-                              BoxShadow(
-                                color: const Color(0xFF0284C7).withOpacity(0.15),
-                                blurRadius: 16,
-                                spreadRadius: 1,
-                              ),
-                            ]
-                          : null,
+                      boxShadow: [
+                        BoxShadow(
+                          color: dev.isOnline
+                              ? const Color(0xFF0284C7).withOpacity(0.15)
+                              : Colors.black.withOpacity(0.3),
+                          blurRadius: 16,
+                          spreadRadius: 1,
+                        ),
+                      ],
                     ),
                     child: Padding(
                       padding: const EdgeInsets.all(18.0),

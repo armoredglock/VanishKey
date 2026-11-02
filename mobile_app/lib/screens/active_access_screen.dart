@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -47,31 +48,45 @@ class _ActiveAccessScreenState extends State<ActiveAccessScreen> {
   }
 
   void _copyToClipboard(String text, String label) {
+    HapticFeedback.lightImpact();
     Clipboard.setData(ClipboardData(text: text));
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$label copied to clipboard')),
+      SnackBar(
+        backgroundColor: const Color(0xFF1E293B),
+        content: Text('$label copied to clipboard', style: const TextStyle(color: Colors.white)),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
     );
   }
 
   void _shareWithRoommate() {
+    HapticFeedback.lightImpact();
     final message = '''
 VanishKey Temporary Login for ${widget.device.deviceName}:
 Username: ${widget.credential.username}
 Password: ${widget.credential.password}
 
-Note: Standard user permissions only. This account and its files will self-destruct in $_remainingSeconds seconds.
+Note: Standard guest permissions only. This temporary session automatically logs off and purges all files in $_remainingSeconds seconds.
 ''';
     Clipboard.setData(ClipboardData(text: message));
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Login message copied! Paste it to your roommate.')),
+      SnackBar(
+        backgroundColor: const Color(0xFF0C4A6E),
+        content: const Text('Login details copied! Paste them to your guest.', style: TextStyle(color: Colors.white)),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
     );
   }
 
   void _handleEmergencyTerminate() {
+    HapticFeedback.heavyImpact();
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E293B),
+        backgroundColor: const Color(0xFF131B2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Row(
           children: [
             Icon(Icons.warning_amber_rounded, color: Colors.redAccent),
@@ -80,7 +95,7 @@ Note: Standard user permissions only. This account and its files will self-destr
           ],
         ),
         content: const Text(
-          'This will immediately lock your laptop, terminate all guest processes, and permanently delete the temporary account from Windows.',
+          'This will immediately log off the guest session, return your laptop to your primary lock screen, and permanently delete the temporary account.',
           style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
         ),
         actions: [
@@ -91,7 +106,8 @@ Note: Standard user permissions only. This account and its files will self-destr
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.redAccent,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
             onPressed: () {
               Navigator.pop(ctx);
@@ -104,13 +120,15 @@ Note: Standard user permissions only. This account and its files will self-destr
                 _remainingSeconds = 0;
               });
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  backgroundColor: Color(0xFF991B1B),
-                  content: Text('Kill signal sent. Account forcefully wiped on laptop.'),
+                SnackBar(
+                  backgroundColor: const Color(0xFF991B1B),
+                  content: const Text('Kill signal sent. Guest session logged off and wiped.'),
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
               );
             },
-            child: const Text('Kill Session & Wipe', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            child: const Text('Kill Session & Wipe', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -126,20 +144,21 @@ Note: Standard user permissions only. This account and its files will self-destr
     final seconds = _remainingSeconds % 60;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: const Color(0xFF0A0E1A),
       appBar: AppBar(
-        title: const Text('Temporary Access Granted'),
-        backgroundColor: const Color(0xFF1E293B),
+        title: const Text('Temporary Access Granted', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        backgroundColor: const Color(0xFF131B2E),
+        elevation: 0,
         automaticallyImplyLeading: false,
         actions: [
           IconButton(
-            icon: const Icon(Icons.close),
+            icon: const Icon(Icons.close_rounded, color: Colors.white70),
             onPressed: () => Navigator.pop(context),
           ),
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
         child: Column(
           children: [
             // Circular Countdown Timer
@@ -148,16 +167,16 @@ Note: Standard user permissions only. This account and its files will self-destr
                 alignment: Alignment.center,
                 children: [
                   SizedBox(
-                    width: 170,
-                    height: 170,
+                    width: 180,
+                    height: 180,
                     child: CircularProgressIndicator(
                       value: isExpired ? 0.0 : progress,
                       strokeWidth: 10,
-                      backgroundColor: const Color(0xFF334155),
+                      backgroundColor: const Color(0xFF1E293B),
                       valueColor: AlwaysStoppedAnimation<Color>(
                         isExpired
                             ? Colors.redAccent
-                            : (_remainingSeconds < 30 ? Colors.orangeAccent : const Color(0xFF38BDF8)),
+                            : (_remainingSeconds < 60 ? Colors.orangeAccent : const Color(0xFF38BDF8)),
                       ),
                     ),
                   ),
@@ -169,10 +188,11 @@ Note: Standard user permissions only. This account and its files will self-destr
                             ? 'EXPIRED'
                             : '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}',
                         style: TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 34,
+                          fontWeight: FontWeight.w700,
                           color: isExpired ? Colors.redAccent : Colors.white,
                           letterSpacing: 2,
+                          fontFeatures: const [FontFeature.tabularFigures()],
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -185,63 +205,77 @@ Note: Standard user permissions only. This account and its files will self-destr
                 ],
               ),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 28),
 
             if (isExpired) ...[
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF7F1D1D).withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.redAccent),
+                  color: const Color(0xFF7F1D1D).withOpacity(0.35),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.redAccent.withOpacity(0.5)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.redAccent.withOpacity(0.1),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
                 child: const Row(
                   children: [
-                    Icon(Icons.warning_amber, color: Colors.redAccent, size: 28),
-                    SizedBox(width: 12),
+                    Icon(Icons.lock_reset_rounded, color: Colors.redAccent, size: 28),
+                    SizedBox(width: 14),
                     Expanded(
                       child: Text(
-                        'This temporary credential has expired. The user session, account, and directory have been purged from the laptop.',
-                        style: TextStyle(color: Colors.white, fontSize: 13),
+                        'Time limit reached. The guest session was logged out and the laptop has locked back to the primary user.',
+                        style: TextStyle(color: Colors.white, fontSize: 13, height: 1.3),
                       ),
                     ),
                   ],
                 ),
               ),
             ] else ...[
-              // Security Warning Card
+              // Fast-Logon & Security Info Card
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF0C4A6E).withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFF0284C7)),
+                  color: const Color(0xFF0C4A6E).withOpacity(0.25),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFF0284C7).withOpacity(0.4)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF0284C7).withOpacity(0.08),
+                      blurRadius: 12,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
                 ),
                 child: const Row(
                   children: [
-                    Icon(Icons.lock_outline, color: Color(0xFF38BDF8), size: 24),
+                    Icon(Icons.bolt_rounded, color: Color(0xFF38BDF8), size: 24),
                     SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'Standard User • Isolated from your private home folder & files • Auto-deleted upon timer expiration.',
-                        style: TextStyle(color: Color(0xFFE0F2FE), fontSize: 12),
+                        'Fast Desktop Sign-in: First logon animation skipped • Direct desktop access • Auto-logs out to primary lock screen on expiry.',
+                        style: TextStyle(color: Color(0xFFE0F2FE), fontSize: 12, height: 1.35),
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
 
-              // Username Display
+              // Username Display Card
               _buildCredentialCard(
                 label: 'GUEST ACCOUNT USERNAME',
                 badge: 'Local User',
                 value: widget.credential.username,
                 onCopy: () => _copyToClipboard(widget.credential.username, 'Username'),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
 
-              // Password Display
+              // Password Display Card
               _buildCredentialCard(
                 label: 'TEMPORARY PASSCODE',
                 badge: '12-char CSPRNG',
@@ -260,11 +294,12 @@ Note: Standard user permissions only. This account and its files will self-destr
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF0284C7),
                     padding: const EdgeInsets.symmetric(vertical: 15),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    elevation: 3,
                   ),
                   icon: const Icon(Icons.share_outlined, color: Colors.white, size: 20),
                   label: const Text(
-                    'Copy Full Login Details for Roommate',
+                    'Copy Full Login Details for Guest',
                     style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
                   ),
                   onPressed: _shareWithRoommate,
@@ -280,7 +315,7 @@ Note: Standard user permissions only. This account and its files will self-destr
                     foregroundColor: Colors.redAccent,
                     side: const BorderSide(color: Color(0xFFEF4444), width: 1.2),
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
                   icon: const Icon(Icons.power_settings_new_rounded, color: Colors.redAccent, size: 20),
                   label: const Text(
@@ -309,9 +344,16 @@ Note: Standard user permissions only. This account and its files will self-destr
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFF334155)),
+        color: const Color(0xFF131B2E),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFF1E293B)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.35),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -324,15 +366,15 @@ Note: Standard user permissions only. This account and its files will self-destr
                 style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF94A3B8), letterSpacing: 0.5),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: const Color(0xFF0F172A),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: const Color(0xFF334155)),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFF1E293B)),
                 ),
                 child: Text(
                   badge,
-                  style: const TextStyle(fontSize: 10, color: Color(0xFF38BDF8), fontWeight: FontWeight.w500),
+                  style: const TextStyle(fontSize: 10, color: Color(0xFF38BDF8), fontWeight: FontWeight.w600),
                 ),
               ),
             ],

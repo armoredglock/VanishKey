@@ -54,6 +54,7 @@ class _PinLockScreenState extends State<PinLockScreen> {
   }
 
   void _onKeyPressed(String digit) {
+    HapticFeedback.lightImpact();
     if (_enteredPin.length < 6) {
       setState(() {
         _enteredPin += digit;
@@ -66,6 +67,7 @@ class _PinLockScreenState extends State<PinLockScreen> {
   }
 
   void _onDelete() {
+    HapticFeedback.lightImpact();
     if (_enteredPin.isNotEmpty) {
       setState(() {
         _enteredPin = _enteredPin.substring(0, _enteredPin.length - 1);
@@ -293,7 +295,12 @@ class _PinLockScreenState extends State<PinLockScreen> {
           children: [
             Text(
               digit,
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: Colors.white),
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+                fontFeatures: [FontFeature.tabularFigures()],
+              ),
             ),
             if (sub.isNotEmpty)
               Text(

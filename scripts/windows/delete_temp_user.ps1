@@ -3,12 +3,13 @@
     VanishKey - Temporary User Cleanup Script (Windows)
     Terminates active sessions, deletes local account, profile registry entries, and folder.
 .DESCRIPTION
-    1. Forcefully logs off any active sessions for the specified user.
+    1. Forcefully logs off active sessions for the specified user and switches back to the primary user lock screen.
     2. Deletes the scheduled task created for automatic cleanup.
     3. Removes the Windows User Profile via WMI (cleans up NTUSER.DAT and Registry).
     4. Removes the local user account from SAM.
     5. Verifies and removes any residual home directory under C:\Users.
-    6. Outputs a JSON status report.
+    6. Locks workstation to the primary desktop user lock screen.
+    7. Outputs a JSON status report.
 .PARAMETER Username
     The name of the temporary user to purge.
 #>
@@ -42,35 +43,77 @@ $cleanupReport = @{
 }
 
 try {
-    # 1. Immediately and forcefully terminate all processes owned by the temporary user
-    # taskkill is native, instant (sub-50ms), and terminates explorer.exe, sihost.exe, and all guest apps
+    # -------------------------------------------------------------
+    # 1. Forcefully Log Off Guest Session & Switch to Primary Lock Screen
+    # -------------------------------------------------------------
+    try {
+        Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+public class VanishSessionManager {
+    [DllImport("wtsapi32.dll", SetLastError = true)]
+    public static extern bool WTSLogoffSession(IntPtr hServer, int SessionId, bool bWait);
+    [DllImport("wtsapi32.dll", SetLastError = true)]
+    public static extern bool WTSDisconnectSession(IntPtr hServer, int SessionId, bool bWait);
+    [DllImport("kernel32.dll")]
+    public static extern uint WTSGetActiveConsoleSessionId();
+}
+"@ -ErrorAction SilentlyContinue
+
+        # Get the active physical console session ID
+        $activeSessionId = [VanishSessionManager]::WTSGetActiveConsoleSessionId()
+
+        # Check if any process under active session or other sessions belongs to target user
+        $targetProcs = Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
+            $_.GetOwner().User -eq $Username
+        }
+
+        if ($targetProcs) {
+            $sessionIdsToLogoff = $targetProcs.SessionId | Select-Object -Unique
+            foreach ($sId in $sessionIdsToLogoff) {
+                [VanishSessionManager]::WTSLogoffSession([IntPtr]::Zero, [int]$sId, $false)
+            }
+        }
+    } catch { }
+
+    # -------------------------------------------------------------
+    # 2. Instantly kill all processes owned by the temporary user
+    # -------------------------------------------------------------
     try {
         taskkill.exe /F /FI "USERNAME eq $Username" /T 2>$null | Out-Null
         $cleanupReport.sessions_killed = 1
     } catch { }
 
-    # 2. Lock workstation immediately so the display returns to the clean Windows lock screen
+    # -------------------------------------------------------------
+    # 3. Lock workstation to present default primary user lock screen
+    # -------------------------------------------------------------
     try {
         rundll32.exe user32.dll,LockWorkStation
     } catch { }
 
-    # Small pause to allow OS kernel to release any SAM/profile locks
-    Start-Sleep -Milliseconds 300
+    # Small pause to allow OS kernel to release SAM and profile file locks
+    Start-Sleep -Milliseconds 400
 
-    # 3. Delete the scheduled task if it exists
+    # -------------------------------------------------------------
+    # 4. Delete the scheduled task if it exists
+    # -------------------------------------------------------------
     $taskName = "VanishKey_Delete_$Username"
     try {
         schtasks.exe /Delete /TN "$taskName" /F 2>$null | Out-Null
     } catch { }
 
-    # 4. Remove the local user account from SAM (using net.exe and Remove-LocalUser for instant deletion)
+    # -------------------------------------------------------------
+    # 5. Remove the local user account from SAM
+    # -------------------------------------------------------------
     try {
         net.exe user "$Username" /delete 2>$null | Out-Null
         Remove-LocalUser -Name "$Username" -ErrorAction SilentlyContinue
     } catch { }
     $cleanupReport.user_deleted = (-not (Get-LocalUser -Name $Username -ErrorAction SilentlyContinue))
 
-    # 5. Clean up the Windows User Profile via CIM/WMI
+    # -------------------------------------------------------------
+    # 6. Clean up the Windows User Profile via CIM/WMI
+    # -------------------------------------------------------------
     try {
         $profiles = Get-CimInstance Win32_UserProfile -ErrorAction SilentlyContinue | Where-Object {
             $_.LocalPath -like "*\$Username" -or $_.LocalPath -like "*\$Username.*"
@@ -81,7 +124,9 @@ try {
         }
     } catch { }
 
-    # 6. Clean up any lingering folder on disk (C:\Users\<Username>)
+    # -------------------------------------------------------------
+    # 7. Clean up any lingering folder on disk (C:\Users\<Username>)
+    # -------------------------------------------------------------
     $userHomePath = Join-Path "C:\Users" $Username
     if (Test-Path $userHomePath) {
         try {
@@ -93,6 +138,11 @@ try {
     } else {
         $cleanupReport.folder_deleted = $true
     }
+
+    # Ensure lock screen is active
+    try {
+        rundll32.exe user32.dll,LockWorkStation
+    } catch { }
 
     $cleanupReport["success"] = $true
     $cleanupReport | ConvertTo-Json -Compress
