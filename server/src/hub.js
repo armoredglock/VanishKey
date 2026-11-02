@@ -115,12 +115,45 @@ export class RelayHub {
       }
 
       case 'AGENT_AUTH': {
-        const { deviceId, deviceToken } = msg;
-        const device = store.getDevice(deviceId);
+        const { deviceId, deviceToken, pairingSecret, publicKey, osType, deviceName } = msg;
+        let device = store.getDevice(deviceId);
+
+        // If cloud relay restarted and lost state, automatically fallback to pending pairing if secret provided
+        if (!device && pairingSecret) {
+          logger.info({ deviceId }, 'Server store reset or device unknown; registering as pending pairing');
+          setBoundDeviceId(deviceId);
+          this.agents.set(deviceId, ws);
+          store.registerPendingDevice({
+            deviceId,
+            deviceName: deviceName || 'Desktop Host',
+            osType: osType || 'windows',
+            publicKey: publicKey,
+            pairingSecret
+          });
+          store.updateOnlineStatus(deviceId, true);
+          ws.send(JSON.stringify({
+            type: 'REGISTRATION_ACK',
+            deviceId,
+            status: 'PENDING_PAIRING'
+          }));
+          break;
+        }
+
         if (!device || device.deviceToken !== deviceToken) {
           ws.send(JSON.stringify({ type: 'ERROR', message: 'Authentication failed: invalid device token' }));
           ws.close(4001, 'Unauthorized');
           return;
+        }
+
+        if (pairingSecret) {
+          device.pairingSecret = pairingSecret;
+          store.registerPendingDevice({
+            deviceId,
+            deviceName: deviceName || device.deviceName,
+            osType: osType || device.osType,
+            publicKey: publicKey || device.publicKey,
+            pairingSecret
+          });
         }
 
         setBoundDeviceId(deviceId);

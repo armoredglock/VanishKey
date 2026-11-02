@@ -102,38 +102,15 @@ function connect() {
   ws.on('open', () => {
     console.log('[+] Connected to VanishKey Relay Server');
 
-    if (identity.deviceToken) {
-      // Authenticate with existing device token
-      ws.send(JSON.stringify({
-        type: 'AGENT_AUTH',
-        deviceId: identity.deviceId,
-        deviceToken: identity.deviceToken
-      }));
-    } else {
-      // Register pending pairing
-      ws.send(JSON.stringify({
-        type: 'REGISTER_PENDING_DEVICE',
-        deviceId: identity.deviceId,
-        deviceName: identity.deviceName,
-        osType: identity.osType,
-        publicKey: identity.publicKeyBase64,
-        pairingSecret: identity.pairingSecret
-      }));
+    // Always generate pairing-qr files so GUI & screen always have fresh valid QR
+    const pairingPayload = JSON.stringify({
+      deviceId: identity.deviceId,
+      relayUrl: RELAY_HTTP_URL,
+      pairingSecret: identity.pairingSecret,
+      devicePublicKey: identity.publicKeyBase64
+    });
 
-      const pairingPayload = JSON.stringify({
-        deviceId: identity.deviceId,
-        relayUrl: RELAY_HTTP_URL,
-        pairingSecret: identity.pairingSecret,
-        devicePublicKey: identity.publicKeyBase64
-      });
-
-      console.log('\n====================================================');
-      console.log('   SCAN THIS QR CODE IN THE VANISHKEY MOBILE APP    ');
-      console.log('====================================================\n');
-      qrcodeTerminal.generate(pairingPayload, { small: true });
-
-      // Also generate a pairing-qr.html web page for easy scanning on any screen
-      const htmlContent = `<!DOCTYPE html>
+    const htmlContent = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
@@ -164,10 +141,37 @@ function connect() {
   </script>
 </body>
 </html>`;
-      fs.writeFileSync(path.join(process.cwd(), 'pairing-qr.html'), htmlContent, 'utf8');
-      try {
-        QRCode.toFile(path.join(process.cwd(), 'pairing-qr.png'), pairingPayload, { width: 320, margin: 2 }, () => {});
-      } catch (e) {}
+    fs.writeFileSync(path.join(process.cwd(), 'pairing-qr.html'), htmlContent, 'utf8');
+    try {
+      QRCode.toFile(path.join(process.cwd(), 'pairing-qr.png'), pairingPayload, { width: 320, margin: 2 }, () => {});
+    } catch (e) {}
+
+    if (identity.deviceToken) {
+      // Authenticate with existing device token, sending pairingSecret to keep pairing accessible
+      ws.send(JSON.stringify({
+        type: 'AGENT_AUTH',
+        deviceId: identity.deviceId,
+        deviceToken: identity.deviceToken,
+        pairingSecret: identity.pairingSecret,
+        publicKey: identity.publicKeyBase64,
+        deviceName: identity.deviceName,
+        osType: identity.osType
+      }));
+    } else {
+      // Register pending pairing
+      ws.send(JSON.stringify({
+        type: 'REGISTER_PENDING_DEVICE',
+        deviceId: identity.deviceId,
+        deviceName: identity.deviceName,
+        osType: identity.osType,
+        publicKey: identity.publicKeyBase64,
+        pairingSecret: identity.pairingSecret
+      }));
+
+      console.log('\n====================================================');
+      console.log('   SCAN THIS QR CODE IN THE VANISHKEY MOBILE APP    ');
+      console.log('====================================================\n');
+      qrcodeTerminal.generate(pairingPayload, { small: true });
       console.log('\n[Tip] You can also open "pairing-qr.html" in your web browser to scan!');
       console.log('Pairing JSON Payload:');
       console.log(pairingPayload);
@@ -183,6 +187,14 @@ function connect() {
         console.log(`[i] Registered as pending pairing. Waiting for mobile app...`);
       } else if (msg.type === 'AUTH_SUCCESS') {
         console.log(`[+] Authenticated successfully as ${msg.deviceName}`);
+      } else if (msg.type === 'ERROR') {
+        console.error(`[-] Relay Error: ${msg.message}`);
+        if (msg.message && msg.message.includes('invalid device token')) {
+          console.log('[*] Resetting invalid device token and re-registering for pairing...');
+          identity.deviceToken = null;
+          identity.ownerId = null;
+          fs.writeFileSync(CONFIG_FILE, JSON.stringify(identity, null, 2), 'utf8');
+        }
       } else if (msg.type === 'DEVICE_PAIRED_EVENT') {
         console.log(`[+] Device successfully paired with Owner: ${msg.ownerId}!`);
         identity.deviceToken = msg.deviceToken;
@@ -245,13 +257,10 @@ function connect() {
             console.log(`[!] Time expired for ${creds.username}! Instant signout & purge...`);
             console.log(`====================================================`);
 
-            // Step 1: Instantly terminate guest session and lock screen (sub-100ms)
+            // Step 1: Instantly terminate guest session (sub-100ms)
             if (process.platform === 'win32') {
               try {
                 execSync(`taskkill /F /FI "USERNAME eq ${creds.username}" /T`, { stdio: 'ignore' });
-              } catch (e) {}
-              try {
-                execSync(`rundll32.exe user32.dll,LockWorkStation`, { stdio: 'ignore' });
               } catch (e) {}
               try {
                 execSync(`net user "${creds.username}" /delete`, { stdio: 'ignore' });
@@ -296,7 +305,6 @@ function connect() {
 
         if (process.platform === 'win32') {
           try { execSync(`taskkill /F /FI "USERNAME eq ${targetUser}" /T`, { stdio: 'ignore' }); } catch (e) {}
-          try { execSync(`rundll32.exe user32.dll,LockWorkStation`, { stdio: 'ignore' }); } catch (e) {}
           try { execSync(`net user "${targetUser}" /delete`, { stdio: 'ignore' }); } catch (e) {}
         }
 

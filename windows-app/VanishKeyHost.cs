@@ -202,6 +202,12 @@ namespace VanishKeyHostApp
                 }
             };
 
+            Button btnResetPairing = CreateModernButton("🔄 Reset Pairing / New PIN", Color.FromArgb(30, 41, 59), Color.FromArgb(56, 189, 248));
+            btnResetPairing.Location = new Point(14, 382);
+            btnResetPairing.Size = new Size(259, 34);
+            btnResetPairing.Click += (s, e) => ResetPairingSession();
+
+            leftPanel.Controls.Add(btnResetPairing);
             leftPanel.Controls.Add(btnOpenBrowser);
             leftPanel.Controls.Add(btnCopyPin);
             leftPanel.Controls.Add(lblPin);
@@ -504,6 +510,32 @@ namespace VanishKeyHostApp
                 {
                     AppendLog("[-] Emergency wipe error: " + ex.Message, Color.FromArgb(248, 113, 113));
                 }
+            }
+        }
+
+        private void ResetPairingSession()
+        {
+            try
+            {
+                string cfgPath = Path.Combine(agentDir, "agent-config.json");
+                if (File.Exists(cfgPath))
+                {
+                    string json = File.ReadAllText(cfgPath);
+                    int newPin = new Random().Next(100000, 999999);
+                    json = System.Text.RegularExpressions.Regex.Replace(json, "\"pairingSecret\"\\s*:\\s*\"[^\"]*\"", "\"pairingSecret\": \"" + newPin + "\"");
+                    json = System.Text.RegularExpressions.Regex.Replace(json, "\"deviceToken\"\\s*:\\s*(\"[^\"]*\"|null)", "\"deviceToken\": null");
+                    json = System.Text.RegularExpressions.Regex.Replace(json, "\"ownerId\"\\s*:\\s*(\"[^\"]*\"|null)", "\"ownerId\": null");
+                    File.WriteAllText(cfgPath, json);
+
+                    lblPin.Text = "Pairing PIN: " + newPin;
+                    AppendLog("[*] Pairing reset. New PIN generated: " + newPin, Color.FromArgb(56, 189, 248));
+                    RestartAgent();
+                    MessageBox.Show("New pairing session created!\nNew PIN: " + newPin + "\n\nScan the updated QR code with your mobile app.", "Pairing Reset", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Failed to reset pairing: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 

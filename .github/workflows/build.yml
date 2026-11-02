@@ -146,7 +146,13 @@ jobs:
           name: VanishKey-Windows-App
           path: release-assets/windows
 
-      - name: Publish GitHub Release (v1.0.0)
+      - name: Stage Release Assets
+        run: |
+          mkdir -p release-ready
+          find release-assets -type f \( -name "*.apk" -o -name "*.exe" -o -name "*.zip" \) -exec cp {} release-ready/ \;
+          ls -la release-ready/
+
+      - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
@@ -161,9 +167,7 @@ jobs:
             - 💻 **Windows Desktop Host App (New):** `VanishKeyHost.exe` (Native GUI & System Tray with Live QR)
             - 💻 **Windows Portable Bundle:** `VanishKey-Windows-Portable.zip`
           files: |
-            release-assets/android/app-release.apk
-            release-assets/windows/VanishKeyHost.exe
-            release-assets/windows/VanishKey-Windows-Portable.zip
+            release-ready/*
           draft: false
           prerelease: false
         env:

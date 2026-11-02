@@ -90,7 +90,20 @@ export class VanishKeyStore {
 
   // Complete pairing
   pairDevice({ ownerId, deviceId, pairingSecret, phonePublicKey, customName }) {
-    const pending = this.getPendingDevice(deviceId);
+    let pending = this.getPendingDevice(deviceId);
+    const existing = this.devices.get(deviceId);
+
+    // If not in pending window, allow re-pairing if device exists and pairingSecret matches
+    if (!pending && existing && existing.pairingSecret && existing.pairingSecret === pairingSecret) {
+      pending = {
+        deviceId: existing.deviceId,
+        deviceName: existing.deviceName,
+        osType: existing.osType,
+        publicKey: existing.publicKey,
+        pairingSecret: existing.pairingSecret
+      };
+    }
+
     if (!pending) {
       throw new Error('Device not found or pairing window expired');
     }
@@ -102,18 +115,27 @@ export class VanishKeyStore {
     const deviceToken = 'vkt_dev_' + crypto.randomBytes(24).toString('hex');
     const ownerToken = 'vkt_own_' + crypto.randomBytes(24).toString('hex');
 
+    // Clean up old owner mappings if re-pairing to a new owner
+    if (existing && existing.ownerId && existing.ownerId !== ownerId) {
+      const oldOwnerSet = this.ownerDevices.get(existing.ownerId);
+      if (oldOwnerSet) {
+        oldOwnerSet.delete(deviceId);
+      }
+    }
+
     const pairedDevice = {
       deviceId,
       ownerId,
       deviceName: customName || pending.deviceName,
       osType: pending.osType,
       publicKey: pending.publicKey,
+      pairingSecret: pending.pairingSecret,
       phonePublicKey: phonePublicKey || null,
       deviceToken,
       ownerToken,
       pairedAt: new Date().toISOString(),
       lastSeenAt: new Date().toISOString(),
-      isOnline: false
+      isOnline: existing ? existing.isOnline : false
     };
 
     this.devices.set(deviceId, pairedDevice);

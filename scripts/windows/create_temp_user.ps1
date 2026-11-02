@@ -182,10 +182,6 @@ try {
     Invoke-Expression $schtasksCmd 2>$null | Out-Null
 } catch { }
 
-# Background fallback watchdog process
-$fallbackCommand = "Start-Sleep -Seconds $($DurationMinutes * 60); & '$deleteScript' -Username '$Username'"
-Start-Process powershell.exe -ArgumentList "-WindowStyle Hidden -NoProfile -ExecutionPolicy Bypass -Command `"$fallbackCommand`"" -WindowStyle Hidden
-
 # Output JSON result
 $result = @{
     "success"          = $true
