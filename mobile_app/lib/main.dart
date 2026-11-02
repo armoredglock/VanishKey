@@ -50,8 +50,6 @@ class _VanishKeyMobileAppState extends State<VanishKeyMobileApp> {
           primary: Color(0xFF38BDF8),
           secondary: Color(0xFF0284C7),
           surface: Color(0xFF131B2E),
-          surfaceVariant: Color(0xFF1E293B),
-          background: const Color(0xFF0A0E1A),
         ),
         appBarTheme: const AppBarTheme(
           backgroundColor: Color(0xFF0A0E1A),
@@ -65,7 +63,7 @@ class _VanishKeyMobileAppState extends State<VanishKeyMobileApp> {
             color: Colors.white,
           ),
         ),
-        cardTheme: CardTheme(
+        cardTheme: CardThemeData(
           color: const Color(0xFF131B2E),
           elevation: 0,
           shape: RoundedRectangleBorder(
